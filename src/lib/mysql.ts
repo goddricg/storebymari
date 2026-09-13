@@ -56,10 +56,16 @@ export function getMysqlConfig(
 }
 
 const globalForMysql = globalThis as MysqlGlobal;
+// Next.js evaluates server modules while collecting route/page data during a
+// production build.  That phase must not require live deployment credentials;
+// the running production server still uses the strict validation below.
+const isNextProductionBuild =
+  process.env.NEXT_PHASE === "phase-production-build";
 const mysqlConfig = getMysqlConfig(process.env, {
   // Pure unit tests and local tooling can import helpers without a live DB;
-  // production remains fail-fast and never receives credential fallbacks.
-  allowMissing: process.env.NODE_ENV !== "production",
+  // production runtime remains fail-fast and never receives credential
+  // fallbacks.  Build-time module evaluation is the one safe exception.
+  allowMissing: process.env.NODE_ENV !== "production" || isNextProductionBuild,
 });
 
 const pool =
