@@ -1,0 +1,44 @@
+import type { MetadataRoute } from 'next'
+
+import { getSiteConfig } from '@/lib/site-config'
+
+export default function manifest(): MetadataRoute.Manifest {
+  const { siteName } = getSiteConfig();
+  return {
+    name: `${siteName} - ขายแอพพรีเมียมราคาถูก`,
+    short_name: siteName,
+    description: 'ศูนย์รวมบัญชีพรีเมียมแท้ ราคาถูก ปลอดภัย พร้อมรับประกัน',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    orientation: 'portrait-primary',
+    background_color: '#120b17',
+    theme_color: '#170f1d',
+    icons: [
+      {
+        src: '/pwa-app-icon-192.png?v=20260909',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/pwa-app-icon-maskable-192.png?v=20260909',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
+      {
+        src: '/pwa-app-icon-512.png?v=20260909',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/pwa-app-icon-maskable-512.png?v=20260909',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
+    ],
+  }
+}

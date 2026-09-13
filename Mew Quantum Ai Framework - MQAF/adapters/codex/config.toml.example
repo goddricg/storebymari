@@ -1,0 +1,13 @@
+# Merge these settings into the target project's .codex/config.toml.
+# Do not overwrite existing project configuration without review.
+
+model = "gpt-5.6-sol"
+# Program Director baseline. Promote per task only after capability detection.
+model_reasoning_effort = "medium"
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+default_subagent_model = "gpt-5.6-terra"
+# Project Manager and unpinned custom-agent baseline.
+default_subagent_reasoning_effort = "medium"

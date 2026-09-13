@@ -1,0 +1,4 @@
+interface:
+  display_name: "👑 Quantum Supreme Web Architect"
+  short_description: "Route models, expert roles, and evidence-based delivery"
+  default_prompt: "Use $mew-orchestrate to select the shallowest model route, plan, delegate, verify, and deliver this engineering task."
