@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { absoluteUrl, catalogPath, decodeProductPathSegment, pageMetadata, parseCatalogQuery, productPath, serializeJsonLd } from "../src/lib/seo";
 import { productStructuredData } from "../src/lib/products/seo";
+import { googleProductFeedXml } from "../src/lib/products/google-feed";
 import type { PublicStorefrontProduct } from "../src/lib/products/public-product";
 import { getSiteConfig } from "../src/lib/site-config";
 
@@ -78,4 +79,14 @@ test("missing or invalid public prices do not generate misleading offers", () =>
   }
   assert.equal(productStructuredData({ ...product, priceWalkin: 0 }).offers?.price, "0.00");
   assert.ok(!("image" in productStructuredData({ ...product, imageUrl: "javascript:alert(1)" })));
+});
+
+test("Google product feed uses visible guest prices and escapes public catalogue text", () => {
+  const feed = googleProductFeedXml([{ ...product, details: "A < B & C", priceWalkin: 120 }]);
+  assert.match(feed, /<g:title>Example Premium<\/g:title>/);
+  assert.match(feed, /<g:price>120\.00 THB<\/g:price>/);
+  assert.match(feed, /A &lt; B &amp; C/);
+  assert.match(feed, /<g:availability>in stock<\/g:availability>/);
+  assert.match(feed, /<g:identifier_exists>no<\/g:identifier_exists>/);
+  assert.ok(!feed.includes("DO_NOT_EXPOSE"));
 });
