@@ -31,9 +31,11 @@ export function getSiteConfig(): SiteConfig {
 
   return {
     siteId,
-    siteName: "App By Mari",
+    siteName: "StoreByMari",
     siteUrl:
-      process.env.NEXT_PUBLIC_BASE_URL || "https://storebymari.com",
+      (process.env.NEXT_PUBLIC_BASE_URL || "https://www.storebymari.com")
+        .replace(/\/$/, "")
+        .replace(/^https?:\/\/(www\.)?storebymari\.com$/, "https://www.storebymari.com"),
     isChildSite: false,
   };
 }

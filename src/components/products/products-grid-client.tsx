@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { catalogPath, productPath } from '@/lib/seo'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -73,6 +75,9 @@ function CategoryThumbnail({
 }
 
 type ProductsGridClientProps = {
+  initialPage?: number
+  initialCategory?: string
+  initialSearch?: string
   initialProducts?: ProductCard[]
   initialTotal?: number
   initialTotalPages?: number
@@ -86,6 +91,9 @@ type ProductsGridClientProps = {
 }
 
 export default function ProductsGridClient({
+  initialPage = 1,
+  initialCategory = '',
+  initialSearch = '',
   initialProducts,
   initialTotal = 0,
   initialTotalPages = 1,
@@ -99,10 +107,10 @@ export default function ProductsGridClient({
 }: ProductsGridClientProps) {
   const hasInitialData = initialProducts != null
   const [products, setProducts] = useState<ProductCard[]>(initialProducts ?? [])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('ทั้งหมด')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [searchTerm, setSearchTerm] = useState(initialSearch)
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch)
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory || 'ทั้งหมด')
+  const [currentPage, setCurrentPage] = useState(initialPage)
   const [totalPages, setTotalPages] = useState(
     hasInitialData ? initialTotalPages : 1
   )
@@ -129,12 +137,14 @@ export default function ProductsGridClient({
   useEffect(() => {
     if (!showFilters) return
 
+    if (searchTerm.trim() === debouncedSearch) return
+
     const timer = window.setTimeout(() => {
       setDebouncedSearch(searchTerm.trim())
       setCurrentPage(1)
     }, 350)
     return () => window.clearTimeout(timer)
-  }, [searchTerm, showFilters])
+  }, [searchTerm, showFilters, debouncedSearch])
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category)
@@ -197,9 +207,9 @@ export default function ProductsGridClient({
     const controller = new AbortController()
 
     const isDefaultQuery =
-      currentPage === 1 &&
-      selectedCategory === 'ทั้งหมด' &&
-      debouncedSearch.length === 0
+      currentPage === initialPage &&
+      selectedCategory === (initialCategory || 'ทั้งหมด') &&
+      debouncedSearch === initialSearch
 
     if (
       skipNextFetchRef.current &&
@@ -281,7 +291,7 @@ export default function ProductsGridClient({
       cancelled = true
       controller.abort()
     }
-  }, [currentPage, selectedCategory, debouncedSearch, realtimeRefreshVersion, itemsPerPage])
+  }, [currentPage, selectedCategory, debouncedSearch, realtimeRefreshVersion, itemsPerPage, initialPage, initialCategory, initialSearch])
 
   const sortedCategories = useMemo(
     () => [...allCategories].sort((a, b) => a.category.localeCompare(b.category, 'th')),
@@ -591,7 +601,18 @@ export default function ProductsGridClient({
           ) : null}
 
           {/* Pagination */}
-          {showPagination && totalPages > 1 && (
+          {showPagination && totalPages > 1 && !isHomeLayout && (
+            <nav aria-label="หน้ารายการสินค้า" className="dreamy-glass-panel mt-6 flex flex-wrap items-center gap-2 rounded-xl p-4 !text-black">
+              <span className="mr-auto text-sm">หน้า {currentPage} จาก {totalPages} · {total} รายการ</span>
+              {getPageNumbers().map((page, index) => typeof page === 'number' ? (
+                <Link key={page} prefetch={false} aria-current={page === currentPage ? 'page' : undefined}
+                  href={catalogPath({ page, category: selectedCategory, search: debouncedSearch })}
+                  className={cn('rounded-lg border px-3 py-2 !text-black', page === currentPage ? 'bg-pink-200' : 'bg-white')}>{page}</Link>
+              ) : <span key={`gap-${index}`}>…</span>)}
+              {currentPage < totalPages && <Link prefetch={false} className="rounded-lg border bg-white px-3 py-2 !text-black" href={catalogPath({ page: currentPage + 1, category: selectedCategory, search: debouncedSearch })}>ถัดไป</Link>}
+            </nav>
+          )}
+          {showPagination && totalPages > 1 && isHomeLayout && (
             <div className="dreamy-glass-panel mt-6 flex items-center justify-between rounded-xl px-4 py-5 sm:px-6">
               <div className="flex w-full items-center justify-between gap-2 sm:hidden">
                 <Button
@@ -774,7 +795,7 @@ function ProductCardItem({
             "dreamy-compact-product-title relative z-40 min-h-[2.45rem] text-pretty whitespace-pre-line break-words [overflow-wrap:anywhere] text-[13px] font-semibold leading-[1.22] sm:text-base",
             isOutOfStock ? "text-gray-500" : "text-[#0B0B0B]"
           )}>
-            {normalizeNewlines(product.name)}
+            <Link prefetch={false} href={productPath(product.typeId)} className="hover:underline focus-visible:underline">{normalizeNewlines(product.name)}</Link>
           </CardTitle>
           {(product.typeMenu || (showOutOfStockBadge && isOutOfStock) || (!isOutOfStock && badge) || priceVip != null) && (
             <div className="storefront-product-card-badges relative z-40 flex min-w-0 flex-wrap items-center gap-1">

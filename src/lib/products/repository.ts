@@ -122,6 +122,8 @@ async function selectScopedProductRow(
   const [rows] = await pool.execute(
     `SELECT p.*,
             spp.retail_price as site_retail_price,
+            spp.price_vip as site_price_vip,
+            spp.price_walkin as site_price_walkin,
             spp.image_url as site_image_url
      FROM products p
      LEFT JOIN site_product_prices spp

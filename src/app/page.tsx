@@ -2,6 +2,8 @@
 import Image from "next/image";
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { pageMetadata, STORE_DESCRIPTION } from "@/lib/seo";
+import { StoreGuideLinks } from "@/components/seo/store-guide-links";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProductsGridClient from "@/components/products/products-grid-client";
@@ -38,29 +40,8 @@ import {
 export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { siteName, isChildSite } = getSiteConfig();
-  const publicSettings = await loadLayoutPublicSettings();
-  const configuredTitle = publicSettings.site_title?.trim();
-  return {
-    title: configuredTitle || (isChildSite
-      ? `${siteName} | ขายแอพพรีเมียมราคาถูก Netflix, Spotify, YouTube แท้`
-      : MAIN_SITE_BROWSER_TITLE),
-    description:
-      `${siteName} ศูนย์รวมบัญชีพรีเมียมแท้ ราคาถูก ปลอดภัย พร้อมรับประกัน ใช้งานได้จริง ทั้ง Netflix, Spotify, YouTube Premium, Disney+ และอีกมากมาย บริการรวดเร็ว ตอบไว ดูแลหลังขาย 24 ชม.`,
-    keywords: [
-      siteName,
-    "ขายแอพพรีเมียม",
-    "เช่าแอพพรีเมียม",
-    "ขายบัญชี Netflix แท้",
-    "Spotify Premium",
-    "YouTube Premium",
-    "Disney Plus",
-    "Premium App Thailand",
-    "บัญชีพรีเมียมราคาถูก",
-    "บัญชีพรีเมียมแท้",
-    "เว็บขายแอพพรีเมียม",
-  ],
-  };
+  const { siteName } = getSiteConfig();
+  return pageMetadata(`${siteName} สินค้าและแอปพรีเมียมออนไลน์`, STORE_DESCRIPTION, "/");
 }
 
 // The root layout remains request-rendered for live tenant theme settings.
@@ -136,7 +117,7 @@ export default function Home() {
   return (
     <main className="front-store-page">
       <BreadcrumbJsonLd items={[{ name: "หน้าแรก", url: siteUrl }]} />
-      <h1 className="sr-only">{siteName} ศูนย์รวมบัญชีพรีเมียมแท้ ราคาถูก ปลอดภัย บริการครบ จบในหน้าเดียว ให้บริการคนไทย</h1>
+      <h1 className="sr-only">{siteName} สินค้าและแอปพรีเมียมออนไลน์</h1>
       <div className="front-store-scale-shell">
         <FrontStoreHeader />
         <AnnouncementBar />
@@ -381,6 +362,7 @@ async function ProductsSection() {
         />
       </section>
 
+      <StoreGuideLinks />
       <FrontStoreExtras />
     </div>
   );

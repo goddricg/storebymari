@@ -16,7 +16,7 @@ import {
   normalizeThemePack,
   resolveThemeMode,
 } from "@/lib/theme/catalog";
-import { OrganizationJsonLd, WebSiteJsonLd, FAQJsonLd, ItemListJsonLd } from "@/components/seo/json-ld";
+import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/json-ld";
 import { MAIN_SITE_BROWSER_TITLE, getSiteConfig } from "@/lib/site-config";
 import {
   resolveSiteBrandLogo,
@@ -35,6 +35,7 @@ import { PushAutoSync } from "@/components/push/push-auto-sync";
 import { MimiNotificationPrompt } from "@/components/push/mimi-notification-prompt";
 import { PwaAppLoadingScreen } from "@/components/pwa/pwa-app-loading-screen";
 import { PopupAnnouncementModal } from "@/components/popup-announcement-modal";
+import { STORE_DESCRIPTION } from "@/lib/seo";
 import "./globals.css";
 
 const notoSansThai = Noto_Sans_Thai({
@@ -60,7 +61,7 @@ export async function generateMetadata(): Promise<Metadata> {
     : MAIN_SITE_BROWSER_TITLE);
   const shortTitle = siteTitle.split('|')[0].trim();
 
-  const siteDescription = `${siteName} ศูนย์รวมบัญชีพรีเมียมแท้ ราคาถูก ปลอดภัย พร้อมรับประกัน ใช้งานได้จริง ทั้ง Netflix Ultra HD, Spotify Premium, YouTube Premium, Disney+, Prime Video, HBO GO, VIU, WeTV และอีกมากมาย แชร์ Netflix หาร Netflix แบบไม่โดนแบน บริการรวดเร็ว ตอบไว ดูแลหลังขาย 24 ชม.`;
+  const siteDescription = isChildSite ? `${siteName} ร้านสินค้าออนไลน์ ดูราคาและเงื่อนไขก่อนสั่งซื้อ` : STORE_DESCRIPTION;
 
   const siteLogo = isChildSite
     ? publicSettings.site_logo_url?.trim() || undefined
@@ -70,81 +71,10 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     title: {
       default: siteTitle,
-      template: `%s | ${shortTitle}`,
+      template: `%s | ${isChildSite ? shortTitle : defaultSiteName}`,
     },
   description: siteDescription,
-  keywords: [
-    // Main keywords
-    siteName,
-    "ขายแอพพรีเมียม",
-    "เช่าแอพพรีเมียมราคาถูก",
-    "บัญชีพรีเมียมแท้ ราคาถูก ปลอดภัย",
-    "Premium App Service Thailand",
-    // Netflix Focus
-    "Netflix",
-    "ขาย Netflix แท้",
-    "เช่าNetflix ราคาถูก",
-    "Netflix Ultra HD",
-    "Netflix UHD",
-    "Netflix Premium",
-    "แชร์ Netflix",
-    "หาร Netflix",
-    "สมัคร Netflix",
-    "Netflix รายเดือน",
-    "Netflix 89 บาท",
-    "ขายnetflix",
-    "ขายแอคnf",
-    "แอคแท้ไม่มีจอปลิว",
-    "หารเน็ตฟลิกรายเดือน",
-    "สมัครnetflixราคาถูก",
-    // Spotify Focus
-    "Spotify",
-    "Spotify Premium",
-    "Spotify Premium ราคาถูก",
-    "วิธีเช่า Spotify Premium อย่างปลอดภัย",
-    "สปอติฟายพรีเมี่ยม",
-    // YouTube Focus
-    "Youtube",
-    "Youtube Premium",
-    "YouTube Premium Family",
-    "แชร์บัญชี YouTube Premium",
-    "youtube premium ราคาถูก",
-    // Other Streaming Services
-    "Disney+",
-    "Disney+ Hotstar Premium",
-    "Prime Video",
-    "HBO GO",
-    "AIS Play",
-    "TrueID",
-    "VIU",
-    "WeTV",
-    "Monomax",
-    "iQIYI",
-    "Bilibili",
-    // Secondary & Broad Categories
-    "ขายบัญชีพรีเมียม",
-    "เช่าบัญชีพรีเมียม",
-    "แอปดูหนังพรีเมียม",
-    "แอปเพลงพรีเมียม",
-    "Premium Account Thailand",
-    "Shared Subscription",
-    "บัญชีพรีเมียมไม่โดนแบน",
-    "บัญชีแท้พร้อมรับประกัน",
-    "เว็บขายแอพพรีเมียมถูกและปลอดภัย",
-    "ซื้อบัญชี Netflix Premium ราคาถูก",
-    "Premium App Marketplace สำหรับคนไทย",
-    "ซื้อแอพพรีเมียมราคาถูก ปลอดภัย พร้อมรับประกันหลังขาย",
-    // Local & GEO keywords
-    "ขายแอพพรีเมียมในไทย",
-    "ร้านขายบัญชีพรีเมียมไทย",
-    "เช่าแอพพรีเมียมราคาถูกที่สุดในไทย",
-    "บริการคนไทย",
-    // Extras
-    "แอคพรี่เมี่ยม",
-    "ราคาถูก",
-    "รับตัวแทน",
-    "แอปพรีเมี่ยมแท้รับประกัน",
-  ],
+
   openGraph: {
     title: siteTitle,
     description: siteDescription,
@@ -171,9 +101,7 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [siteLogo],
     }),
   },
-  alternates: {
-    canonical: siteUrl,
-  },
+  robots: { index: false, follow: true },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -193,12 +121,7 @@ export async function generateMetadata(): Promise<Metadata> {
       { url: SITE_BRAND_PWA_ICON_192_PATH, sizes: "192x192", type: "image/png" },
     ],
   },
-  other: {
-    'geo.region': 'TH',
-    'geo.placename': 'Thailand',
-    'geo.position': '13.7563;100.5018',
-    'ICBM': '13.7563, 100.5018',
-  },
+
   };
 }
 

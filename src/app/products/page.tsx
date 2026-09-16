@@ -11,28 +11,30 @@ import {
   Zap,
 } from "lucide-react";
 import ProductsGridClient from "@/components/products/products-grid-client";
-import { getSiteConfig } from "@/lib/site-config";
+import { notFound } from "next/navigation";
+import { fetchPublishedProductsPaginated, getAllCategoriesCached } from "@/lib/products/repository";
+import { toPublicStorefrontProduct } from "@/lib/products/public-product";
+import { catalogPath, pageMetadata, parseCatalogQuery } from "@/lib/seo";
+import { BreadcrumbJsonLd } from "@/components/seo/json-ld";
+import { StoreGuideLinks } from "@/components/seo/store-guide-links";
+type PageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+const PAGE_SIZE = 12;
 
-export async function generateMetadata(): Promise<Metadata> {
-  const { siteName } = getSiteConfig();
-  return {
-    title: "สินค้าทั้งหมด บัญชีพรีเมียมแท้ราคาถูก",
-    description: `เลือกซื้อบัญชีพรีเมียมแท้จาก ${siteName} ราคาถูก ปลอดภัย พร้อมรับประกัน ครอบคลุม Netflix, Spotify, YouTube Premium, Disney+ และอีกมากมาย`,
-    keywords: [
-      siteName,
-      "สินค้าพรีเมียม",
-      "บัญชีพรีเมียมทั้งหมด",
-      "ขายบัญชีพรีเมียม",
-      "Premium Account",
-      "Netflix Premium",
-      "Spotify Premium",
-      "YouTube Premium",
-      "Disney Plus",
-    ],
-  };
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const query = parseCatalogQuery(await searchParams);
+  return pageMetadata(`สินค้าทั้งหมด${query.page > 1 ? ` หน้า ${query.page}` : ""}`,
+    "เลือกดูสินค้าและแอปพรีเมียม StoreByMari เปรียบเทียบราคา สต็อก ระยะเวลาและเงื่อนไขก่อนสั่งซื้อด้วยพ้อยท์ของร้าน",
+    catalogPath(query), Boolean(query.search || query.category));
 }
 
-export default function ProductsPage() {
+export default async function ProductsPage({ searchParams }: PageProps) {
+  const query = parseCatalogQuery(await searchParams);
+  const [catalog, categories] = await Promise.all([
+    fetchPublishedProductsPaginated(PAGE_SIZE, (query.page - 1) * PAGE_SIZE, query.category, query.search),
+    getAllCategoriesCached(false),
+  ]);
+  if (query.page > 1 && !catalog.products.length) notFound();
+  const totalPages = Math.max(1, Math.ceil(catalog.total / PAGE_SIZE));
   return (
     <section className="products-catalog-page relative isolate overflow-hidden pt-4 pb-12 sm:pt-6 sm:pb-16">
       <div className="products-catalog-shell relative z-10 mx-auto w-full max-w-[1740px] px-4 sm:px-6 lg:px-8">
@@ -56,24 +58,30 @@ export default function ProductsPage() {
             </div>
           </header>
 
-          <ProductsGridClient categoryLayout="chips" />
+          <BreadcrumbJsonLd items={[{ name: "หน้าแรก", url: "/" }, { name: "สินค้า", url: catalogPath(query) }]} />
+          <ProductsGridClient key={catalogPath(query)} categoryLayout="chips"
+            initialProducts={catalog.products.map(toPublicStorefrontProduct)}
+            initialCategories={categories.map(c => ({ category: c.category, imageUrl: c.imageUrl, count: c.count }))}
+            initialTotal={catalog.total} initialTotalPages={totalPages}
+            initialPage={query.page} initialCategory={query.category} initialSearch={query.search} />
+          <StoreGuideLinks />
 
           <div className="products-catalog-trust-strip mt-8 grid gap-3 rounded-3xl px-4 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
             <div className="products-catalog-trust-item flex items-center gap-3">
               <ShieldCheck className="size-7 shrink-0" aria-hidden="true" />
-              <span><strong>ปลอดภัย 100%</strong><small>บัญชีแท้มีการรับประกัน</small></span>
+              <span><strong>อ่านรายละเอียดก่อนซื้อ</strong><small>ตรวจสอบเงื่อนไขแต่ละรายการ</small></span>
             </div>
             <div className="products-catalog-trust-item flex items-center gap-3">
               <Zap className="size-7 shrink-0" aria-hidden="true" />
-              <span><strong>จัดส่งไว</strong><small>เปิดใช้งานได้ทันที</small></span>
+              <span><strong>จัดส่งไว</strong><small>ดูข้อมูลในประวัติคำสั่งซื้อ</small></span>
             </div>
             <div className="products-catalog-trust-item flex items-center gap-3">
               <Headphones className="size-7 shrink-0" aria-hidden="true" />
-              <span><strong>ดูแลตลอดการใช้งาน</strong><small>ทีมงานพร้อมช่วยเหลือ</small></span>
+              <span><strong>แจ้งปัญหาการใช้งาน</strong><small>ทีมงานพร้อมช่วยเหลือ</small></span>
             </div>
             <div className="products-catalog-trust-item flex items-center gap-3">
               <Star className="size-7 shrink-0" aria-hidden="true" />
-              <span><strong>ลูกค้าพึงพอใจ</strong><small>รีวิวจริงจากผู้ใช้งาน</small></span>
+              <span><strong>ติดตามคำสั่งซื้อ</strong><small>ตรวจสอบรายการได้ในบัญชีของคุณ</small></span>
             </div>
           </div>
         </div>
@@ -82,11 +90,11 @@ export default function ProductsPage() {
       <aside className="products-catalog-benefits relative z-10" aria-label="จุดเด่นของร้าน">
         <div className="products-catalog-benefits-panel rounded-3xl p-5 sm:p-6">
           <p className="flex items-center gap-2 text-sm font-semibold"><Truck className="size-5" aria-hidden="true" /> สั่งซื้อไวทันใจ</p>
-          <p className="mt-1 text-xs">เปิดใช้งานเร็ว ใช้ได้ในไม่กี่นาที</p>
+          <p className="mt-1 text-xs">ตรวจสอบสินค้าและราคาก่อนยืนยัน</p>
           <div className="mt-5 space-y-4">
-            <div className="flex gap-3"><ShieldCheck className="size-6 shrink-0" aria-hidden="true" /><span><strong>สินค้าพรีเมียม</strong><small>บัญชีแท้ มีการรับประกัน 100%</small></span></div>
+            <div className="flex gap-3"><ShieldCheck className="size-6 shrink-0" aria-hidden="true" /><span><strong>สินค้าพรีเมียม</strong><small>ดูเงื่อนไขในรายละเอียดสินค้า</small></span></div>
             <div className="flex gap-3"><Headphones className="size-6 shrink-0" aria-hidden="true" /><span><strong>ตอบง่าย ดูแลตลอด</strong><small>ทีมงานพร้อมช่วยเหลือหลังการขาย</small></span></div>
-            <div className="flex gap-3"><Star className="size-6 shrink-0" aria-hidden="true" /><span><strong>ลูกค้าพึงพอใจ</strong><small>รีวิวจริงจากผู้ใช้งาน</small></span></div>
+            <div className="flex gap-3"><Star className="size-6 shrink-0" aria-hidden="true" /><span><strong>ติดตามคำสั่งซื้อ</strong><small>ตรวจสอบรายการได้ในบัญชีของคุณ</small></span></div>
           </div>
         </div>
       </aside>

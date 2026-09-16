@@ -17,7 +17,7 @@ export default function FrontStoreExtras() {
   return (
     <div className="front-store-extras">
       {!isStandalone ? (
-        <section className="front-store-install" aria-label="ติดตั้ง App by Mari บนอุปกรณ์">
+        <section className="front-store-install" aria-label="ติดตั้ง StoreByMari บนอุปกรณ์">
           <div className="front-store-install-brand">
             <Image
               src={SITE_BRAND_LOGO_PATH}
@@ -28,9 +28,9 @@ export default function FrontStoreExtras() {
             />
           </div>
           <div className="front-store-install-copy">
-            <p className="front-store-install-eyebrow"><Smartphone aria-hidden="true" /> APP BY MARI</p>
+            <p className="front-store-install-eyebrow"><Smartphone aria-hidden="true" /> STORE BY MARI</p>
             <h2>ความสะดวกไว้ในมือคุณ</h2>
-            <p>เพิ่ม App by Mari ไว้บนหน้าจอหลัก แล้วกลับมาเลือกสินค้าได้ง่ายขึ้น</p>
+            <p>เพิ่ม StoreByMari ไว้บนหน้าจอหลัก แล้วกลับมาเลือกสินค้าได้ง่ายขึ้น</p>
           </div>
           <button
             type="button"
@@ -47,6 +47,7 @@ export default function FrontStoreExtras() {
         <p>© {new Date().getFullYear()} StoreByMari. All rights reserved.</p>
         <nav aria-label="ลิงก์ท้ายหน้า">
           <Link href="/products">สินค้า</Link>
+          <Link href="/buying-guide">วิธีสั่งซื้อ</Link>
           <Link href="/support/report">แจ้งปัญหา</Link>
           <Link href="#support">ติดต่อเรา</Link>
         </nav>
