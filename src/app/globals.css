@@ -545,6 +545,282 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
   color: #ff7fc5;
 }
 
+.front-store-hamburger-menu-shell {
+  position: relative;
+  z-index: 70;
+  flex-shrink: 0;
+}
+
+.front-store-hamburger-trigger {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  width: 78px;
+  min-width: 78px;
+  height: 78px;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 1px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #ff9cda 0%, #a863ff 44%, #62e7ff 100%);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 0 22px rgb(255 47 168 / 34%), 0 8px 25px rgb(4 1 12 / 34%);
+  transition: box-shadow 180ms ease, filter 180ms ease;
+}
+
+.front-store-hamburger-trigger::after {
+  position: absolute;
+  z-index: 0;
+  inset: -40%;
+  content: "";
+  pointer-events: none;
+  background: radial-gradient(circle, rgb(255 255 255 / 30%), transparent 52%);
+  opacity: 0.26;
+  transform: rotate(18deg);
+  transition: opacity 180ms ease, transform 260ms ease;
+}
+
+.front-store-hamburger-trigger:hover,
+.front-store-hamburger-trigger:focus-visible {
+  filter: brightness(1.08);
+  box-shadow: 0 0 30px rgb(255 47 168 / 48%), 0 10px 28px rgb(4 1 12 / 42%);
+  outline: none;
+}
+
+.front-store-hamburger-trigger:hover::after,
+.front-store-hamburger-trigger:focus-visible::after {
+  opacity: 0.46;
+  transform: translateX(9%) rotate(18deg);
+}
+
+.front-store-hamburger-trigger:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.front-store-hamburger-trigger-face {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 21px;
+  background: linear-gradient(145deg, rgb(34 15 48 / 84%), rgb(9 7 23 / 88%));
+  backdrop-filter: blur(16px);
+}
+
+.front-store-hamburger-trigger-orb {
+  position: absolute;
+  top: -28px;
+  right: -20px;
+  width: 78px;
+  height: 78px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(255 134 207 / 31%), transparent 68%);
+  pointer-events: none;
+}
+
+.front-store-hamburger-trigger-topline {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.front-store-hamburger-cat-frame {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgb(255 187 226 / 80%);
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 25%, rgb(255 222 243 / 27%), rgb(32 11 43 / 85%));
+  box-shadow: 0 0 12px rgb(255 69 181 / 52%), inset 0 1px 0 rgb(255 255 255 / 26%);
+}
+
+.front-store-hamburger-cat {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  animation: front-store-hamburger-cat-float 4.2s ease-in-out infinite;
+}
+
+.front-store-hamburger-morph {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  color: #ffc0e7;
+  filter: drop-shadow(0 0 7px rgb(255 72 178 / 92%));
+}
+
+.front-store-hamburger-morph-icon {
+  display: inline-flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.front-store-hamburger-morph-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.7;
+}
+
+.front-store-hamburger-label {
+  position: relative;
+  z-index: 1;
+  color: #fff3fc;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgb(255 104 196 / 58%);
+}
+
+.front-store-hamburger-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: min(390px, calc(100vw - 24px));
+  padding: 1px;
+  overflow: visible;
+  border: 0;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgb(255 150 217 / 92%), rgb(144 86 255 / 88%) 45%, rgb(79 224 255 / 88%));
+  box-shadow: 0 22px 58px rgb(1 0 8 / 62%), 0 0 32px rgb(255 39 164 / 28%);
+  transform-origin: top right;
+}
+
+.front-store-hamburger-panel::before {
+  position: absolute;
+  z-index: 0;
+  inset: 1px;
+  content: "";
+  border-radius: 19px;
+  background-image: linear-gradient(rgb(255 255 255 / 4%) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 4%) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.front-store-hamburger-panel-inner {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 19px;
+  padding: 15px;
+  background: linear-gradient(145deg, rgb(27 14 39 / 95%), rgb(8 7 22 / 95%));
+  backdrop-filter: blur(22px);
+}
+
+.front-store-hamburger-panel-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 1px 3px 12px;
+}
+
+.front-store-hamburger-panel-kicker {
+  color: #ff9fd8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.3;
+}
+
+.front-store-hamburger-panel-title {
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-shadow: 0 0 13px rgb(255 94 190 / 48%);
+}
+
+.front-store-hamburger-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.front-store-hamburger-menu-item {
+  display: flex;
+  min-width: 0;
+  min-height: 58px;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border: 1px solid rgb(255 132 207 / 22%);
+  border-radius: 13px;
+  background: linear-gradient(145deg, rgb(255 255 255 / 7%), rgb(255 37 159 / 5%));
+  color: #fff1fb;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.front-store-hamburger-menu-item:hover,
+.front-store-hamburger-menu-item:focus-visible {
+  border-color: rgb(255 158 218 / 74%);
+  background: linear-gradient(145deg, rgb(232 24 128 / 42%), rgb(113 51 185 / 35%));
+  color: #fff;
+  box-shadow: 0 0 18px rgb(255 40 161 / 25%), inset 0 1px 0 rgb(255 255 255 / 16%);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.front-store-hamburger-menu-icon {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(255 143 211 / 31%);
+  border-radius: 10px;
+  background: rgb(255 70 176 / 12%);
+  color: #ff9bd5;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%);
+}
+
+.front-store-hamburger-menu-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .front-store-hamburger-trigger,
+  .front-store-hamburger-trigger::after,
+  .front-store-hamburger-menu-item {
+    transition: none;
+  }
+
+  .front-store-hamburger-cat {
+    animation: none;
+  }
+}
+
 .front-store-login-dialog-panel {
   top: calc(env(safe-area-inset-top, 0px) + 138px) !important;
   right: clamp(12px, 2.05vw, 32px) !important;
@@ -1053,6 +1329,21 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
     height: 27px;
   }
 
+  .front-store-hamburger-trigger {
+    width: 68px;
+    min-width: 68px;
+    height: 68px;
+    border-radius: 20px;
+  }
+
+  .front-store-hamburger-trigger-face {
+    border-radius: 19px;
+  }
+
+  .front-store-hamburger-panel {
+    width: min(380px, calc(100vw - 24px));
+  }
+
   .front-store-primary {
     padding-top: 0;
   }
@@ -1097,6 +1388,31 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
 
   .front-store-header-main {
     min-height: 83px;
+  }
+
+  .front-store-hamburger-trigger {
+    width: 64px;
+    min-width: 64px;
+    height: 64px;
+    border-radius: 19px;
+  }
+
+  .front-store-hamburger-trigger-face {
+    border-radius: 18px;
+  }
+
+  .front-store-hamburger-cat-frame {
+    width: 31px;
+    height: 31px;
+  }
+
+  .front-store-hamburger-morph {
+    width: 26px;
+    height: 26px;
+  }
+
+  .front-store-hamburger-label {
+    font-size: 10px;
   }
 
   .front-store-brand {
@@ -1232,6 +1548,38 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
     width: 40px;
   }
 
+  .front-store-hamburger-trigger {
+    width: 58px;
+    min-width: 58px;
+    height: 58px;
+    border-radius: 17px;
+  }
+
+  .front-store-hamburger-trigger-face {
+    gap: 1px;
+    border-radius: 16px;
+  }
+
+  .front-store-hamburger-cat-frame {
+    width: 26px;
+    height: 26px;
+  }
+
+  .front-store-hamburger-morph {
+    width: 23px;
+    height: 23px;
+  }
+
+  .front-store-hamburger-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+
+  .front-store-hamburger-panel {
+    right: -4px;
+    width: min(350px, calc(100vw - 24px));
+  }
+
   .front-store-account-trigger {
     width: 44px;
     min-width: 44px;
@@ -1276,6 +1624,17 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
 
   100% {
     transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes front-store-hamburger-cat-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-1px) rotate(-3deg);
   }
 }
 

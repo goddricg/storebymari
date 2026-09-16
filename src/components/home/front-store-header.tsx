@@ -14,18 +14,17 @@ import {
   Home,
   History,
   LogOut,
-  Menu,
   ShieldCheck,
   ShoppingBag,
   ShoppingCart,
   Tag,
   UserRound,
-  X,
 } from "lucide-react";
 import { useCart } from "@/components/cart/cart-provider";
 import CustomerNotificationBell from "@/components/notifications/customer-notification-bell";
 import SupportNotificationBell from "@/components/admin/support-notification-bell";
 import LoginForm from "@/components/auth/login-form";
+import CustomHamburgerMenuButton from "@/components/ui/custom-hamburger-menu-button";
 import {
   resolveSiteBrandLogo,
   SITE_BRAND_LOGO_HEIGHT,
@@ -56,7 +55,7 @@ const primaryLinks = [
   { href: "#promotions", label: "โปรโมชั่น", Icon: Tag },
   { href: "/support/report", label: "แจ้งปัญหา", Icon: AlertCircle },
   { href: "#support", label: "ติดต่อเรา", Icon: Headphones },
-];
+] as const;
 
 const ACCOUNT_CAT_ICON_PATH = "/front-store/storebymari-black-cat-account.png";
 
@@ -327,48 +326,46 @@ export default function FrontStoreHeader() {
             accountTrigger(loginOpen, "dialog")
           )}
 
-          <button
-            type="button"
-            className="front-store-menu-button"
-            aria-label={menuOpen ? "ปิดเมนู" : "เปิดเมนู"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
-          </button>
+          <CustomHamburgerMenuButton
+            items={primaryLinks}
+            catImageSrc={ACCOUNT_CAT_ICON_PATH}
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+            renderAdditionalItems={(closeMenu) => (
+              user ? (
+                <Link
+                  href={accountHref}
+                  role="menuitem"
+                  className="front-store-hamburger-menu-item"
+                  onClick={closeMenu}
+                >
+                  <span className="front-store-hamburger-menu-icon" aria-hidden="true">
+                    {isAdmin ? <ShieldCheck /> : <UserRound />}
+                  </span>
+                  <span>{isAdmin ? "เข้าสู่หน้า Admin" : "บัญชีของฉัน"}</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="front-store-hamburger-menu-item"
+                  aria-haspopup="dialog"
+                  aria-expanded={loginOpen}
+                  onClick={() => {
+                    closeMenu();
+                    setLoginOpen(true);
+                  }}
+                >
+                  <span className="front-store-hamburger-menu-icon" aria-hidden="true">
+                    <ShieldCheck />
+                  </span>
+                  <span>เข้าสู่ระบบ</span>
+                </button>
+              )
+            )}
+          />
         </div>
       </div>
-
-      {menuOpen ? (
-        <nav className="front-store-mobile-menu" aria-label="เมนูบนมือถือ">
-          {primaryLinks.map(({ href, label, Icon }) => (
-            <Link href={href} key={label} onClick={() => setMenuOpen(false)}>
-              <Icon aria-hidden="true" />
-              <span>{label}</span>
-            </Link>
-          ))}
-          {user ? (
-            <Link href={accountHref} onClick={() => setMenuOpen(false)}>
-              {isAdmin ? <ShieldCheck aria-hidden="true" /> : <UserRound aria-hidden="true" />}
-              <span>{isAdmin ? "เข้าสู่หน้า Admin" : "บัญชีของฉัน"}</span>
-            </Link>
-          ) : (
-            <button
-              type="button"
-              className="front-store-mobile-login-trigger"
-              aria-haspopup="dialog"
-              aria-expanded={loginOpen}
-              onClick={() => {
-                setMenuOpen(false);
-                setLoginOpen(true);
-              }}
-            >
-              <ShieldCheck aria-hidden="true" />
-              <span>เข้าสู่ระบบ</span>
-            </button>
-          )}
-        </nav>
-      ) : null}
 
       <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
         <DialogContent
