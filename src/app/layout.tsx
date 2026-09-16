@@ -23,6 +23,9 @@ import {
   SITE_BRAND_LOGO_ALT,
   SITE_BRAND_LOGO_HEIGHT,
   SITE_BRAND_LOGO_WIDTH,
+  SITE_BRAND_APPLE_ICON_PATH,
+  SITE_BRAND_FAVICON_PATH,
+  SITE_BRAND_ICON_PATH,
   SITE_BRAND_PWA_ICON_192_PATH,
   SITE_BRAND_PWA_ICON_512_PATH,
 } from "@/lib/site-branding";
@@ -179,11 +182,14 @@ export async function generateMetadata(): Promise<Metadata> {
   },
   icons: {
     icon: [
+      { url: SITE_BRAND_FAVICON_PATH, sizes: "16x16 32x32 48x48", type: "image/x-icon" },
+      { url: SITE_BRAND_ICON_PATH, sizes: "512x512", type: "image/png" },
       { url: SITE_BRAND_PWA_ICON_192_PATH, sizes: "192x192", type: "image/png" },
       { url: SITE_BRAND_PWA_ICON_512_PATH, sizes: "512x512", type: "image/png" },
     ],
+    shortcut: [SITE_BRAND_FAVICON_PATH],
     apple: [
-      { url: "/apple-touch-icon.png?v=20260916", sizes: "180x180", type: "image/png" },
+      { url: SITE_BRAND_APPLE_ICON_PATH, sizes: "180x180", type: "image/png" },
       { url: SITE_BRAND_PWA_ICON_192_PATH, sizes: "192x192", type: "image/png" },
     ],
   },
@@ -271,7 +277,9 @@ export default async function RootLayout({
         <meta name="theme-color" content="#170f1d" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260916" />
+        <link rel="icon" sizes="any" href={SITE_BRAND_FAVICON_PATH} />
+        <link rel="icon" type="image/png" sizes="512x512" href={SITE_BRAND_ICON_PATH} />
+        <link rel="apple-touch-icon" sizes="180x180" href={SITE_BRAND_APPLE_ICON_PATH} />
       </head>
       <body 
         data-site-id={siteId}
