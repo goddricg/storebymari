@@ -247,7 +247,7 @@ export default function SupportNotificationBell({
             void loadNotifications();
           }
         }}
-        className="relative flex size-10 items-center justify-center rounded-xl text-[#9a5832] transition-colors hover:bg-[var(--theme-color)]/10 hover:text-[var(--theme-color)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-color)]"
+        className="front-store-notification-trigger relative flex size-10 items-center justify-center rounded-xl text-[#5a1238] transition-colors hover:bg-[var(--theme-color)]/10 hover:text-[#8e265f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-color)]"
       >
         <Bell className="size-5" aria-hidden="true" />
         {unreadCount > 0 ? (

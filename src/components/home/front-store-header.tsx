@@ -9,7 +9,6 @@ import {
   AlertCircle,
   Bell,
   Coins,
-  ChevronDown,
   FileText,
   Headphones,
   Home,
@@ -65,9 +64,11 @@ export default function FrontStoreHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [accountMenuAnimating, setAccountMenuAnimating] = useState(false);
   const [masterPointStatus, setMasterPointStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [masterPoint, setMasterPoint] = useState<number | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
+  const accountMenuTimerRef = useRef<number | null>(null);
   const router = useRouter();
   const { totalQuantity } = useCart();
   const { user, refreshSession } = useSession();
@@ -77,7 +78,36 @@ export default function FrontStoreHeader() {
   const siteName = publicSettings.site_name?.trim() || "Store By Mari";
   const siteLogo = resolveSiteBrandLogo(publicSettings.site_logo_url);
   const accountHref = user ? (isAdmin ? "/admin" : "/dashboard") : "/login";
-  const accountLabel = user ? (isAdmin ? "Admin" : "บัญชีของฉัน") : "เข้าสู่ระบบ";
+  useEffect(() => {
+    return () => {
+      if (accountMenuTimerRef.current !== null) {
+        window.clearTimeout(accountMenuTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleAccountMenuOpenChange = (open: boolean) => {
+    if (!user) return;
+
+    if (accountMenuTimerRef.current !== null) {
+      window.clearTimeout(accountMenuTimerRef.current);
+      accountMenuTimerRef.current = null;
+    }
+
+    if (!open) {
+      setAccountMenuAnimating(false);
+      setAccountMenuOpen(false);
+      return;
+    }
+
+    setAccountMenuAnimating(true);
+    const animationDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 360;
+    accountMenuTimerRef.current = window.setTimeout(() => {
+      setAccountMenuOpen(true);
+      setAccountMenuAnimating(false);
+      accountMenuTimerRef.current = null;
+    }, animationDelay);
+  };
 
   useEffect(() => {
     if (!canViewMasterPoint || !accountMenuOpen) return;
@@ -120,6 +150,7 @@ export default function FrontStoreHeader() {
     window.dispatchEvent(new Event("auth:session-changed"));
     await refreshSession();
     setAccountMenuOpen(false);
+    setAccountMenuAnimating(false);
     toast.success("ออกจากระบบสำเร็จ");
     router.refresh();
   };
@@ -163,11 +194,9 @@ export default function FrontStoreHeader() {
           width={64}
           height={64}
           sizes="56px"
-          className="front-store-account-cat"
+          className={`front-store-account-cat${accountMenuAnimating ? " is-opening" : ""}`}
         />
       </span>
-      <span className="front-store-account-label">{accountLabel}</span>
-      <ChevronDown aria-hidden="true" className="front-store-login-chevron" />
     </button>
   );
 
@@ -206,14 +235,14 @@ export default function FrontStoreHeader() {
             {user ? (
               isAdmin ? <SupportNotificationBell user={user} /> : <CustomerNotificationBell user={user} />
             ) : (
-              <Link href="/login" className="front-store-icon-link" aria-label="เข้าสู่ระบบเพื่อดูการแจ้งเตือน">
+              <Link href="/login" className="front-store-icon-link front-store-notification-trigger" aria-label="เข้าสู่ระบบเพื่อดูการแจ้งเตือน">
                 <Bell aria-hidden="true" />
               </Link>
             )}
           </div>
 
           {user ? (
-            <DropdownMenu open={accountMenuOpen} onOpenChange={setAccountMenuOpen}>
+            <DropdownMenu open={accountMenuOpen} onOpenChange={handleAccountMenuOpenChange}>
               <DropdownMenuTrigger asChild>
                 {accountTrigger(accountMenuOpen, "menu")}
               </DropdownMenuTrigger>

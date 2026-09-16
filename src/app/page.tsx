@@ -66,7 +66,7 @@ export async function generateMetadata(): Promise<Metadata> {
 // The root layout remains request-rendered for live tenant theme settings.
 // Cache public homepage reads at their repository boundaries instead.
 
-const GRID_PAGE_SIZE = 20;
+const GRID_PAGE_SIZE = 10;
 const HOME_SETTINGS_KEYS = [
   "home_youtube_url",
   "home_youtube_enabled",

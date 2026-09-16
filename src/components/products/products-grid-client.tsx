@@ -38,7 +38,7 @@ type CategoryInfo = {
   count: number
 }
 
-const HOME_PRODUCT_LIMIT = 20
+const HOME_PRODUCT_LIMIT = 10
 
 function CategoryThumbnail({
   imageUrl,
@@ -80,6 +80,7 @@ type ProductsGridClientProps = {
   showFilters?: boolean
   showOutOfStockBadge?: boolean
   layout?: 'catalog' | 'home'
+  categoryLayout?: 'sidebar' | 'chips'
   pageSize?: number
   showPagination?: boolean
 }
@@ -92,6 +93,7 @@ export default function ProductsGridClient({
   showFilters = true,
   showOutOfStockBadge = true,
   layout = 'catalog',
+  categoryLayout = 'sidebar',
   pageSize = 12,
   showPagination = true,
 }: ProductsGridClientProps) {
@@ -335,13 +337,20 @@ export default function ProductsGridClient({
   // Products ถูก sort แล้วใน repository (มีสต็อกมาก่อน, badge, name)
   const prioritizedProducts = products
   const isHomeLayout = layout === 'home'
+  const useCategoryChips = showFilters && categoryLayout === 'chips'
   const visibleProducts = isHomeLayout
     ? prioritizedProducts.slice(0, HOME_PRODUCT_LIMIT)
     : prioritizedProducts
 
   return (
-    <div className={showFilters ? 'lg:grid lg:grid-cols-[260px_1fr] lg:gap-6 xl:grid-cols-[280px_1fr]' : 'w-full'}>
-      {showFilters ? (
+    <div className={cn(
+      'products-grid-client',
+      useCategoryChips && 'products-grid-client--chips',
+      showFilters && !useCategoryChips
+        ? 'lg:grid lg:grid-cols-[260px_1fr] lg:gap-6 xl:grid-cols-[280px_1fr]'
+        : 'w-full'
+    )}>
+      {showFilters && !useCategoryChips ? (
         <aside className="hidden lg:block">
         <Card className="dreamy-glass-panel dreamy-category-panel sticky top-24 relative overflow-visible rounded-xl">
           <span
@@ -408,7 +417,7 @@ export default function ProductsGridClient({
       <div className="space-y-6 sm:space-y-8">
         {showFilters ? (
           <div className="space-y-3">
-          <div className="dreamy-glass-panel relative flex w-full flex-col gap-3 overflow-visible rounded-xl p-3 sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+          <div className="dreamy-glass-panel products-catalog-search-panel relative flex w-full flex-col gap-3 overflow-visible rounded-xl p-3 sm:flex-row sm:items-center sm:gap-4 sm:p-4">
             <div className="hidden items-center gap-3 sm:flex">
               <span className="flex size-10 items-center justify-center rounded-md theme-bg-10 text-[var(--theme-color)]">
                 <Search className="size-5" />
@@ -433,9 +442,15 @@ export default function ProductsGridClient({
             </Button>
           </div>
 
-          <div className="w-full lg:hidden" suppressHydrationWarning>
+          <div
+            className={cn(
+              'products-catalog-category-strip w-full',
+              !useCategoryChips && 'lg:hidden'
+            )}
+            suppressHydrationWarning
+          >
             <div 
-              className="flex w-full gap-2.5 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory [-webkit-overflow-scrolling:touch]"
+              className="products-catalog-category-scroll flex w-full gap-2.5 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory [-webkit-overflow-scrolling:touch]"
               style={{
                 scrollbarWidth: "none",
                 msOverflowStyle: "none",
@@ -489,7 +504,7 @@ export default function ProductsGridClient({
         <>
           {/* Compact responsive skeleton: two product cards per row below desktop */}
           <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:hidden">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: isHomeLayout ? HOME_PRODUCT_LIMIT : 6 }).map((_, i) => (
               <Card key={i} className="dreamy-compact-product-card py-0 border-transparent bg-white/95 shadow-sm">
                 <CardContent className="flex h-full flex-col gap-2 p-2.5 sm:p-3">
                   <div className="dreamy-compact-product-media rounded-xl theme-bg-10 animate-pulse" />
@@ -501,8 +516,11 @@ export default function ProductsGridClient({
             ))}
           </div>
           {/* Desktop skeleton follows the same horizontal-media card layout. */}
-          <div className="hidden xl:grid xl:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className={cn(
+            'products-catalog-product-grid hidden gap-4 xl:grid',
+            isHomeLayout ? 'xl:grid-cols-5' : 'xl:grid-cols-4 2xl:grid-cols-6 2xl:gap-5'
+          )}>
+            {Array.from({ length: isHomeLayout ? HOME_PRODUCT_LIMIT : 6 }).map((_, i) => (
               <Card key={i} className="dreamy-card dreamy-product-card dreamy-compact-product-card border-transparent bg-white shadow-sm">
                 <CardContent className="relative z-10 flex h-full min-h-0 flex-col gap-2.5 p-2.5 sm:gap-3 sm:p-4">
                   <div className="dreamy-compact-product-media rounded-xl theme-bg-10 animate-pulse" />
@@ -541,7 +559,7 @@ export default function ProductsGridClient({
           ) : (
             <>
               {/* Mobile and tablet: two compact product cards per row */}
-              <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:hidden">
+              <div className="products-catalog-product-grid grid grid-cols-2 gap-2.5 sm:gap-4 xl:hidden">
                 {visibleProducts.map((product) => (
                   <ProductCardItem
                     key={product.id}
@@ -551,7 +569,10 @@ export default function ProductsGridClient({
                 ))}
               </div>
 
-              <div className="hidden xl:grid xl:grid-cols-3 gap-6">
+              <div
+                data-testid="catalog-product-grid"
+                className="products-catalog-product-grid hidden gap-4 xl:grid xl:grid-cols-4 2xl:grid-cols-6 2xl:gap-5"
+              >
                 {visibleProducts.map((product) => (
                   <ProductCardItem
                     key={product.id}
