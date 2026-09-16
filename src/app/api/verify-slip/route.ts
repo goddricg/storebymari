@@ -46,6 +46,7 @@ const PROVIDER_FAILURE_MESSAGE =
   "ระบบตรวจสอบสลิปไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ";
 const DUPLICATE_RECOVERY_MESSAGE =
   "สลิปนี้ถูกตรวจสอบไปแล้ว แต่ระบบยังอ่านข้อมูลไม่ครบ กรุณาลองใหม่ด้วยสลิปเดิม";
+type RequestFormData = { get(name: string): string | File | null };
 
 function createSlip2GoFormData(
   slipFile: File,
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const formData = await request.formData().catch(() => null);
+    const formData = await request.formData().catch(() => null) as RequestFormData | null;
     if (!formData) {
       return NextResponse.json<VerifySlipResponse>(
         {

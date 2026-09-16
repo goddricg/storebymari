@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/auth/server";
+import { isAdminUser } from "@/lib/auth/roles";
 import AdminLayout from "@/components/admin/admin-layout";
 
 import { getSiteId } from "@/lib/site";
@@ -22,8 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function AdminDashboardPage() {
   const user = await requireAdmin("/login?next=%2Fadmin");
-  // ตรวจสอบ role: superadmin หรือ admin
-  const isAdmin = user?.role === 'superadmin' || user?.role === 'admin' || user?.isAdmin;
+  // ตรวจสอบ role: owner, superadmin หรือ admin
+  const isAdmin = isAdminUser(user);
   if (!isAdmin) {
     redirect("/");
   }

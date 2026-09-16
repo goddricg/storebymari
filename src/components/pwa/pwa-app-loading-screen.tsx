@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
+import { SITE_BRAND_LOGO_ALT, SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
 
 export function PwaAppLoadingScreen() {
   const [shouldRender, setShouldRender] = useState(true);
@@ -72,7 +72,7 @@ export function PwaAppLoadingScreen() {
           <div className="relative h-full w-full overflow-hidden rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.75),0_0_40px_rgba(255,138,42,0.25)] ring-1 ring-white/20 animate-pulse">
             <Image
               src={SITE_BRAND_LOGO_PATH}
-              alt="Mari Studio logo"
+              alt={SITE_BRAND_LOGO_ALT}
               fill
               sizes="(max-width: 640px) 56vw, 360px"
               priority

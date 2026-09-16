@@ -22,6 +22,23 @@ export function calculateOriginalPrice(
 }
 
 /**
+ * อ่านค่าเปอร์เซ็นต์ส่วนลดจาก settings ที่มาจากฐานข้อมูลอย่างปลอดภัย
+ * ค่าที่ผิดรูปแบบหรืออยู่นอกช่วง 0-100 จะไม่ถูกนำไปแสดงผล
+ */
+export function parseDiscountPercentage(value: string | null): number | null {
+  if (value === null || value.trim() === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) {
+    return null;
+  }
+
+  return parsed;
+}
+
+/**
  * คำนวณราคาตาม user tier
  * @param price ราคาสำหรับ normal user
  * @param priceVip ราคาสำหรับ vip user

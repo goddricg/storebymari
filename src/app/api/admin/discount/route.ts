@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/server";
 import { getSetting, updateSetting } from "@/lib/settings/repository";
@@ -78,6 +79,8 @@ export async function PATCH(request: NextRequest) {
     const newValue = parsed.data.discount_percentage?.trim() || null;
 
     await updateSetting("discount_percentage", newValue);
+    revalidatePath("/", "layout");
+    revalidatePath("/products");
 
     await recordAdminAuditEvent({
       actor: me,

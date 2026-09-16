@@ -30,6 +30,7 @@ export default function CartPageClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState<CheckoutResponse["caseOrder"] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
 
   const canCheckout = useMemo(() => isHydrated && items.length > 0 && !isSubmitting, [isHydrated, items.length, isSubmitting]);
 
@@ -41,13 +42,15 @@ export default function CartPageClient() {
     if (!canCheckout) return;
     setIsSubmitting(true);
     setError(null);
+    const requestKey = idempotencyKey ?? crypto.randomUUID();
+    if (!idempotencyKey) setIdempotencyKey(requestKey);
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
+          "Idempotency-Key": requestKey,
         },
         body: JSON.stringify({
           lines: items.map((item) => ({ typeId: item.typeId, quantity: item.quantity })),
@@ -56,9 +59,11 @@ export default function CartPageClient() {
       const body = await response.json().catch(() => ({})) as CheckoutResponse;
       if (!response.ok || !body.ok) {
         setError(body.message ?? "ไม่สามารถสั่งซื้อจากตะกร้าได้");
+        if (response.status !== 202 && response.status < 500) setIdempotencyKey(null);
         return;
       }
       clear();
+      setIdempotencyKey(null);
       setSuccess(body.caseOrder ?? null);
       toast.success("สั่งซื้อสินค้าสำเร็จ");
     } catch {
@@ -76,7 +81,7 @@ export default function CartPageClient() {
             <Badge className="bg-[var(--theme-color)]/10 text-[var(--theme-color)]">ตะกร้าสินค้า</Badge>
             <h1 className="mt-3 text-2xl font-bold text-[#0B0B0B] sm:text-3xl">ตรวจสอบรายการสั่งซื้อ</h1>
             <p className="mt-2 text-sm text-[#6B7280]">ซื้อสินค้าหลายรายการใน Case Order เดียวได้ง่ายขึ้น</p>
-            <p className="mt-1 text-xs text-[#9CA3AF]">ตะกร้ารองรับไม่เกิน {MAX_CART_LINE_ITEMS} รายการต่อครั้ง และไม่จำกัดจำนวนชิ้นต่อรายการ (ตามสต็อก) ส่วนสินค้าที่จัดส่งผ่าน External Provider ให้ใช้ปุ่มซื้อทันที</p>
+            <p className="mt-1 text-xs text-[#9CA3AF]">ตะกร้ารองรับไม่เกิน {MAX_CART_LINE_ITEMS} รายการต่อครั้ง และไม่จำกัดจำนวนชิ้นต่อรายการ (ตามสต็อก) ส่วนสินค้าจากร้านหลักต้องสั่งซื้อแยกจากสินค้าในร้าน StoreByMari</p>
           </div>
           {items.length > 0 ? (
             <Button type="button" variant="ghost" className="text-xs text-[#9CA3AF]" onClick={() => clear()}>

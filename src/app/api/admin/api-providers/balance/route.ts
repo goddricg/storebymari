@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSuperAdmin } from "@/lib/auth/server";
+import { getCurrentUser } from "@/lib/auth/server";
+import { canViewGlobalProviderBalance } from "@/lib/auth/access-policies";
+import { getSiteId } from "@/lib/site";
 import { getApiProviderById } from "@/lib/api-providers/repository";
 import { createBasicAuthHeader } from "@/lib/api-providers/utils";
-import { logger } from "@/lib/utils/logger";
 import axios from "axios";
 import qs from "qs";
 import {
@@ -32,32 +33,59 @@ type GafiwShopBalanceResponse = {
   msg?: string;
 };
 
+function noStoreJson(body: unknown, status = 200) {
+  const response = NextResponse.json(body, { status });
+  response.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  return response;
+}
+
+async function authorizeGlobalProviderBalance() {
+  const me = await getCurrentUser();
+  if (!me) {
+    return { user: null, response: noStoreJson({ message: "Unauthorized" }, 401) };
+  }
+  if (!canViewGlobalProviderBalance(getSiteId(), me)) {
+    return { user: null, response: noStoreJson({ message: "Forbidden" }, 403) };
+  }
+  return { user: me, response: null };
+}
+
+function externalBalanceError(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    if (error.response?.status) return `HTTP ${error.response.status}`;
+    if (error.request) return "ไม่ได้รับ response จาก API";
+  }
+  return "เกิดข้อผิดพลาดในการเชื่อมต่อ API";
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const me = await requireSuperAdmin();
+    const authorization = await authorizeGlobalProviderBalance();
+    if (authorization.response) return authorization.response;
+    const me = authorization.user!;
 
     const { searchParams } = new URL(request.url);
     const providerId = searchParams.get("providerId");
 
     if (!providerId) {
-      return NextResponse.json(
+      return noStoreJson(
         { message: "กรุณาระบุ provider ID" },
-        { status: 400 }
+        400,
       );
     }
 
     const provider = await getApiProviderById(providerId);
     if (!provider) {
-      return NextResponse.json(
+      return noStoreJson(
         { message: "ไม่พบ API provider" },
-        { status: 404 }
+        404,
       );
     }
 
     if (!provider.apiKey) {
-      return NextResponse.json(
+      return noStoreJson(
         { message: "API provider นี้ยังไม่มี API key" },
-        { status: 400 }
+        400,
       );
     }
 
@@ -77,14 +105,15 @@ export async function GET(request: NextRequest) {
         });
 
         if (!response.ok) {
-          const errorData = (await response.json().catch(() => null)) as PeamSub24hrBalanceResponse | null;
-          error = errorData?.message || errorData?.error || `HTTP ${response.status}`;
+          // Do not parse or log the upstream error body: it is not needed for
+          // the Admin result and could contain credential-shaped data.
+          error = `HTTP ${response.status}`;
         } else {
           const data = (await response.json()) as PeamSub24hrBalanceResponse;
           if (data.statusCode === 200 && data.data?.balance) {
             balance = data.data.balance;
           } else {
-            error = data.message || data.error || "ไม่สามารถดึงข้อมูล balance ได้";
+            error = "ไม่สามารถดึงข้อมูล balance ได้";
           }
         }
       } else if (provider.name === "gafiwshop" || provider.apiEndpoint.includes("gafiwshop.xyz")) {
@@ -95,14 +124,6 @@ export async function GET(request: NextRequest) {
           "Content-Type": "application/x-www-form-urlencoded",
         };
 
-        logger.debug("🔵 [GafiwShop Balance] Request Details:", {
-          url: API_URL,
-          method: "POST",
-          headers: requestHeaders,
-          body: requestBody,
-          apiKey: provider.apiKey ? `${provider.apiKey.substring(0, 4)}...` : "null",
-        });
-
         try {
           const response = await axios.post<GafiwShopBalanceResponse>(
             API_URL,
@@ -112,12 +133,6 @@ export async function GET(request: NextRequest) {
             }
           );
 
-          logger.debug("✅ [GafiwShop Balance] Response Success:", {
-            status: response.status,
-            statusText: response.statusText,
-            data: response.data,
-          });
-
           const data = response.data;
           
           // รองรับ format ใหม่: { status: "success", msg: "150.56 บาท" }
@@ -126,49 +141,25 @@ export async function GET(request: NextRequest) {
             const balanceMatch = data.msg.match(/[\d.]+/);
             if (balanceMatch) {
               balance = balanceMatch[0];
-              logger.debug("  ✅ Balance extracted from msg:", balance);
             } else {
               error = "ไม่สามารถ parse balance จาก msg ได้";
-              logger.warn("  ❌ Error parsing balance from msg:", data.msg);
             }
           }
           // รองรับ format เก่า: { ok: true, balance: "150.56" }
           else if (data.ok && data.balance !== undefined) {
             balance = data.balance;
-            logger.debug("  ✅ Balance extracted from balance field:", balance);
           } else {
-            error = data.error || data.msg || "ไม่สามารถดึงข้อมูล balance ได้";
-            logger.warn("  ❌ Error from API:", error);
+            error = "ไม่สามารถดึงข้อมูล balance ได้";
           }
-        } catch (axiosError: any) {
-          logger.error("❌ [GafiwShop Balance] Request Failed:", axiosError);
-          
-          if (axiosError.response) {
-            // API ส่ง response กลับมาแต่มี error
-            console.error("  Response Status:", axiosError.response.status);
-            console.error("  Response Headers:", JSON.stringify(axiosError.response.headers, null, 2));
-            console.error("  Response Data:", JSON.stringify(axiosError.response.data, null, 2));
-            
-            const errorData = axiosError.response.data as GafiwShopBalanceResponse;
-            error = errorData.error || `HTTP ${axiosError.response.status}`;
-            console.error("  Error Message:", error);
-          } else if (axiosError.request) {
-            // Request ส่งไปแล้วแต่ไม่ได้รับ response
-            console.error("  Request was made but no response received");
-            console.error("  Request Config:", JSON.stringify(axiosError.config, null, 2));
-            error = "ไม่ได้รับ response จาก API";
-          } else {
-            // เกิด error ในการตั้งค่า request
-            console.error("  Error setting up request:", axiosError.message);
-            console.error("  Stack:", axiosError.stack);
-            error = axiosError.message || "เกิดข้อผิดพลาดในการเชื่อมต่อ API";
-          }
+        } catch (axiosError: unknown) {
+          // Never log the Axios error object: its config/body may contain the
+          // provider credential used in the form-encoded request.
+          error = externalBalanceError(axiosError);
         }
       } else {
         error = "API provider นี้ยังไม่รองรับการดึง balance";
       }
-    } catch (fetchError) {
-      console.error("Error fetching balance:", fetchError);
+    } catch {
       error = "เกิดข้อผิดพลาดในการเชื่อมต่อ API";
     }
 
@@ -187,7 +178,7 @@ export async function GET(request: NextRequest) {
       ...getAdminAuditRequestContext(request),
     });
 
-    return NextResponse.json({
+    return noStoreJson({
       providerId: provider.id,
       providerName: provider.name,
       balance,
@@ -198,7 +189,7 @@ export async function GET(request: NextRequest) {
       error instanceof Error
         ? error.message
         : "ไม่สามารถดึงข้อมูล balance ได้";
-    return NextResponse.json({ message }, { status: 500 });
+    return noStoreJson({ message }, 500);
   }
 }
 

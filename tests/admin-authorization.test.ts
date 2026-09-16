@@ -12,13 +12,16 @@ import {
 
 test("only superadmin users can access restricted admin reports", () => {
   assert.equal(isSuperAdminUser({ role: "superadmin", isAdmin: true }), true);
+  assert.equal(isSuperAdminUser({ role: "owner", isAdmin: true }), true);
   assert.equal(isSuperAdminUser({ role: "admin", isAdmin: true }), false);
   assert.equal(isSuperAdminUser({ role: "user", isAdmin: false }), false);
   assert.equal(isSuperAdminUser({ role: undefined, isAdmin: true }), true);
   assert.equal(isSuperAdminUser(null), false);
   assert.equal(isAdminUser({ role: "admin", isAdmin: true }), true);
+  assert.equal(isAdminUser({ role: "owner", isAdmin: true }), true);
   assert.equal(isAdminUser({ role: "user", isAdmin: false }), false);
   assert.equal(canViewAdminReports("main", { role: "superadmin", isAdmin: true }), true);
+  assert.equal(canViewAdminReports("main", { role: "owner", isAdmin: true }), true);
   assert.equal(canViewAdminReports("main", { role: "admin", isAdmin: true }), false);
   assert.equal(canViewAdminReports("child1", { role: "admin", isAdmin: true }), true);
   assert.equal(canViewAdminReports("child1", { role: "user", isAdmin: false }), false);
@@ -36,6 +39,13 @@ test("the local Owner policy is limited to the dedicated development database", 
   assert.equal(
     isSuperAdminManagementOperator(
       { email: "owner@example.test", role: "superadmin" },
+      localDemo,
+    ),
+    true,
+  );
+  assert.equal(
+    isSuperAdminManagementOperator(
+      { email: "owner@example.test", role: "owner" },
       localDemo,
     ),
     true,
@@ -67,8 +77,15 @@ test("the local Owner policy is limited to the dedicated development database", 
   for (const env of unsafeEnvironments) {
     assert.equal(isLocalDemoAuthEnabled(env), false);
     assert.equal(
+    isSuperAdminManagementOperator(
+      { email: "owner@example.test", role: "superadmin" },
+      env,
+    ),
+    false,
+  );
+    assert.equal(
       isSuperAdminManagementOperator(
-        { email: "owner@example.test", role: "superadmin" },
+        { email: "owner@example.test", role: "owner" },
         env,
       ),
       false,
@@ -85,6 +102,13 @@ test("the local Owner policy is limited to the dedicated development database", 
   assert.equal(
     isSuperAdminManagementOperator(
       { email: "maripwriter@gmail.com", role: "superadmin" },
+      production,
+    ),
+    true,
+  );
+  assert.equal(
+    isSuperAdminManagementOperator(
+      { email: "maripwriter@gmail.com", role: "owner" },
       production,
     ),
     true,

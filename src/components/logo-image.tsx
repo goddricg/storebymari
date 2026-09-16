@@ -4,7 +4,13 @@ import Image from "next/image";
 import { usePublicSettings } from "@/components/public-settings-provider";
 import { getSiteConfig } from "@/lib/site-config";
 import { getSiteId } from "@/lib/site";
-import { SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
+import {
+  resolveSiteBrandLogo,
+  SITE_BRAND_LOGO_ALT,
+  SITE_BRAND_LOGO_HEIGHT,
+  SITE_BRAND_LOGO_PATH,
+  SITE_BRAND_LOGO_WIDTH,
+} from "@/lib/site-branding";
 
 const DEFAULT_LOGO = SITE_BRAND_LOGO_PATH;
 
@@ -24,15 +30,15 @@ export default function LogoImage() {
     );
   }
 
-  const logoUrl = custom && custom.length > 0 ? custom : DEFAULT_LOGO;
-  const logoAlt = siteId === "main" ? "Mari Studio logo" : `${siteName} logo`;
+  const logoUrl = siteId === "main" ? resolveSiteBrandLogo(custom) : custom || DEFAULT_LOGO;
+  const logoAlt = siteId === "main" ? SITE_BRAND_LOGO_ALT : `${siteName} logo`;
 
   return (
     <Image
       src={logoUrl}
       alt={logoAlt}
-      width={1536}
-      height={1024}
+      width={SITE_BRAND_LOGO_WIDTH}
+      height={SITE_BRAND_LOGO_HEIGHT}
       priority
       sizes="(max-width: 640px) 72px, 96px"
       className="dreamy-image-preserve h-12 w-auto object-contain sm:h-16"

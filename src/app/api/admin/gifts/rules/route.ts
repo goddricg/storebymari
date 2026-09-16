@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireSuperAdmin } from "@/lib/auth/server";
+import { getCurrentUser } from "@/lib/auth/server";
+import { canManageGlobalGiftConfig } from "@/lib/auth/access-policies";
+import { getSiteId } from "@/lib/site";
 import {
   createGiftOption,
   deleteGiftOption,
@@ -25,13 +27,31 @@ const toggleSchema = z.object({
   isActive: z.boolean(),
 });
 
+function noStoreJson(body: unknown, status = 200) {
+  const response = NextResponse.json(body, { status });
+  response.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  return response;
+}
+
+async function authorizeGlobalGiftConfig() {
+  const me = await getCurrentUser();
+  if (!me) {
+    return { user: null, response: noStoreJson({ message: "Unauthorized" }, 401) };
+  }
+  if (!canManageGlobalGiftConfig(getSiteId(), me)) {
+    return { user: null, response: noStoreJson({ message: "Forbidden" }, 403) };
+  }
+  return { user: me, response: null };
+}
+
 export async function GET() {
-  await requireSuperAdmin();
+  const authorization = await authorizeGlobalGiftConfig();
+  if (authorization.response) return authorization.response;
 
   const [rules, products] = await Promise.all([listAllGiftOptions(), fetchAllProducts()]);
   const productMap = new Map(products.map((p) => [p.typeId, p]));
 
-  return NextResponse.json({
+  return noStoreJson({
     rules: rules.map((r) => ({
       ...r,
       baseProductName: productMap.get(r.baseProductTypeId)?.name ?? r.baseProductTypeId,
@@ -49,12 +69,14 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const me = await requireSuperAdmin();
+  const authorization = await authorizeGlobalGiftConfig();
+  if (authorization.response) return authorization.response;
+  const me = authorization.user!;
 
   const body = await request.json().catch(() => null);
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ message: "Invalid payload" }, { status: 422 });
+    return noStoreJson({ message: "Invalid payload" }, 422);
   }
 
   const created = await createGiftOption(parsed.data.baseTypeId, parsed.data.giftTypeId);
@@ -77,16 +99,18 @@ export async function POST(request: NextRequest) {
     target: `Base: ${created.baseProductTypeId} -> Gift: ${created.giftProductTypeId}`,
   });
 
-  return NextResponse.json({ rule: created }, { status: 201 });
+  return noStoreJson({ rule: created }, 201);
 }
 
 export async function PATCH(request: NextRequest) {
-  const me = await requireSuperAdmin();
+  const authorization = await authorizeGlobalGiftConfig();
+  if (authorization.response) return authorization.response;
+  const me = authorization.user!;
 
   const body = await request.json().catch(() => null);
   const parsed = toggleSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ message: "Invalid payload" }, { status: 422 });
+    return noStoreJson({ message: "Invalid payload" }, 422);
   }
 
   await setGiftOptionActive(parsed.data.id, parsed.data.isActive);
@@ -109,16 +133,18 @@ export async function PATCH(request: NextRequest) {
     details: `ตั้งค่า is_active = ${String(parsed.data.isActive)}`,
   });
 
-  return NextResponse.json({ success: true });
+  return noStoreJson({ success: true });
 }
 
 export async function DELETE(request: NextRequest) {
-  const me = await requireSuperAdmin();
+  const authorization = await authorizeGlobalGiftConfig();
+  if (authorization.response) return authorization.response;
+  const me = authorization.user!;
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) {
-    return NextResponse.json({ message: "กรุณาระบุ id" }, { status: 422 });
+    return noStoreJson({ message: "กรุณาระบุ id" }, 422);
   }
 
   await deleteGiftOption(id);
@@ -139,7 +165,7 @@ export async function DELETE(request: NextRequest) {
     target: `Rule ID: ${id}`,
   });
 
-  return NextResponse.json({ success: true });
+  return noStoreJson({ success: true });
 }
 
 

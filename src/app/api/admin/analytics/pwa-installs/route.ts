@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/server";
+import { isAdminUser } from "@/lib/auth/roles";
 import { getSiteId } from "@/lib/site";
 import { getPwaInstallStats } from "@/lib/analytics/pwa-repository";
 import {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return noStoreResponse({ message: "Unauthorized" }, 401);
-    if (!(user.role === "superadmin" || user.role === "admin" || user.isAdmin)) {
+    if (!isAdminUser(user)) {
       return noStoreResponse({ message: "Forbidden" }, 403);
     }
 

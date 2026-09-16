@@ -6,6 +6,11 @@ import { getSiteId } from "@/lib/site";
 import { unstable_cache } from "next/cache";
 import { FIRESTORE_PRODUCT_FIELDS_TO_DELETE } from "@/lib/products/realtime-sanitization";
 import { parseStockDeliveryType } from "@/lib/products/stock-delivery-type";
+import {
+  fetchEnabledAppByMariProducts,
+  findAppByMariStorefrontProduct,
+} from "@/lib/appbymari/repository";
+import { parseAppByMariStorefrontTypeId } from "@/lib/appbymari/types";
 
 // Cache for category name -> id mapping
 const categoryCache = new Map<string, string | null>();
@@ -89,6 +94,47 @@ function toProduct(row: any, includeAccountData = true): Product {
   };
 }
 
+function productVisibilityPredicate(alias = "") {
+  const prefix = alias ? `${alias}.` : "";
+  return `(${prefix}is_local = 0 OR (${prefix}is_local = 1 AND ${prefix}site_id = ?))`;
+}
+
+function externalSyncPredicate(siteId: string, alias = "") {
+  const prefix = alias ? `${alias}.` : "";
+  // External providers own the shared catalog on main. A child deployment may
+  // sync only products local to that deployment; it must never reopen another
+  // site's local row by type_id.
+  return siteId === "main"
+    ? `${prefix}is_local = 0`
+    : `(${prefix}is_local = 1 AND ${prefix}site_id = ?)`;
+}
+
+async function selectScopedProductRow(
+  typeId: string,
+  siteId: string,
+  productId?: string,
+): Promise<any | null> {
+  const targetPredicate = productId
+    ? "p.id = ? AND p.type_id = ?"
+    : "p.type_id = ?";
+  const targetParams = productId ? [productId, typeId] : [typeId];
+
+  const [rows] = await pool.execute(
+    `SELECT p.*,
+            spp.retail_price as site_retail_price,
+            spp.image_url as site_image_url
+     FROM products p
+     LEFT JOIN site_product_prices spp
+       ON p.id = spp.product_id AND spp.site_id = ?
+     WHERE ${targetPredicate}
+       AND ${productVisibilityPredicate("p")}
+     LIMIT 1`,
+    [siteId, ...targetParams, siteId],
+  );
+
+  return (rows as any[])[0] ?? null;
+}
+
 
 export const getAllCategoriesCached = unstable_cache(
   async (onlyPublishedWithStock: boolean = false) => {
@@ -100,30 +146,40 @@ export const getAllCategoriesCached = unstable_cache(
 
 export async function upsertProductsFromExternal(
   items: ExternalProduct[],
-  apiProviderId: string
+  apiProviderId: string,
+  siteId: string = getSiteId(),
 ): Promise<void> {
   if (items.length === 0) return;
 
   const now = new Date();
+  const syncSiteId = siteId.trim() || "main";
+  const syncPredicate = externalSyncPredicate(syncSiteId, "p");
+  const syncPredicateParams = syncSiteId === "main" ? [] : [syncSiteId];
 
   for (const item of items) {
     const rawCost = Number(item.pricevip);
     const priceVip = Number.isFinite(rawCost) ? rawCost : null;
     const salePrice = priceVip != null ? Math.max(0, priceVip) : null;
 
-    // Check if product already exists by type_id
+    // Select one product only within the trusted sync scope. Main sync owns
+    // shared/global rows; a child sync owns only its own local rows.
     const [existingRows] = await pool.execute(
-      "SELECT id FROM products WHERE type_id = ? LIMIT 1",
-      [item.type_id]
+      `SELECT p.id
+       FROM products p
+       WHERE p.type_id = ? AND ${syncPredicate}
+       LIMIT 1`,
+      [item.type_id, ...syncPredicateParams]
     );
     const list = existingRows as any[];
+    const existingId = list[0]?.id ?? null;
+    let targetProductId = existingId as string | null;
 
-    if (list.length > 0) {
+    if (existingId) {
       // Update
       await pool.execute(
         `UPDATE products 
          SET name = ?, image_url = ?, details = ?, price = ?, price_vip = ?, price_walkin = ?, stock = ?, type_menu = ?, api_provider_id = ?, updated_at = ? 
-         WHERE type_id = ?`,
+         WHERE id = ? AND type_id = ? AND ${externalSyncPredicate(syncSiteId)}`,
         [
           item.name,
           item.imageapi,
@@ -135,15 +191,18 @@ export async function upsertProductsFromExternal(
           item.type_menu,
           apiProviderId,
           now,
-          item.type_id
+          existingId,
+          item.type_id,
+          ...syncPredicateParams,
         ]
       );
     } else {
       // Insert
       const id = randomUUID();
+      targetProductId = id;
       await pool.execute(
-        `INSERT INTO products (id, type_id, name, image_url, details, price, price_vip, cost_price, price_walkin, stock, type_menu, api_provider_id, is_published, badge, created_at, updated_at, account_data) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO products (id, type_id, name, image_url, details, price, price_vip, cost_price, price_walkin, stock, type_menu, api_provider_id, is_published, badge, created_at, updated_at, account_data, site_id, is_local)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           item.type_id,
@@ -161,14 +220,18 @@ export async function upsertProductsFromExternal(
           null, // badge
           now,
           now,
-          JSON.stringify([])
+          JSON.stringify([]),
+          syncSiteId,
+          syncSiteId === "main" ? 0 : 1,
         ]
       );
     }
 
-    const updatedProduct = await findProductByTypeId(item.type_id);
-    if (updatedProduct) {
-      await syncProductToFirestore(updatedProduct);
+    const updatedProductRow = targetProductId
+      ? await selectScopedProductRow(item.type_id, syncSiteId, targetProductId)
+      : null;
+    if (updatedProductRow) {
+      await syncProductToFirestore(toProduct(updatedProductRow));
     }
   }
 }
@@ -357,11 +420,30 @@ export async function getAllCategories(
     `;
 
     const [rows] = await pool.execute(query);
-    return (rows as any[]).map(r => ({
+    const categories = (rows as any[]).map(r => ({
       category: r.category,
       imageUrl: r.image_url ?? null,
-      count: r.count
+      count: Number(r.count ?? 0),
     }));
+
+    // Keep the category navigation sourced from the site's real catalogue.
+    // AppByMari rows may contribute counts only when their synced category is
+    // already present in that catalogue; unmatched source categories remain
+    // visible under "ทั้งหมด" without inventing local categories.
+    try {
+      const externalProducts = await fetchEnabledAppByMariProducts({ siteId: getSiteId() });
+      const counts = new Map<string, number>();
+      for (const product of externalProducts) {
+        if (onlyPublishedWithStock && (product.stock ?? 0) <= 0) continue;
+        if (product.typeMenu) counts.set(product.typeMenu, (counts.get(product.typeMenu) ?? 0) + 1);
+      }
+      return categories.map((category) => ({
+        ...category,
+        count: category.count + (counts.get(category.category) ?? 0),
+      }));
+    } catch {
+      return categories;
+    }
   } catch (error) {
     console.error("Error in getAllCategories:", error);
     throw error;
@@ -381,7 +463,13 @@ export async function fetchPublishedProducts(): Promise<Product[]> {
                 p.name ASC`,
       [siteId, siteId]
     );
-    return (rows as any[]).map((row) => toProduct(row));
+    const localProducts = (rows as any[]).map((row) => toProduct(row));
+    try {
+      const externalProducts = await fetchEnabledAppByMariProducts({ siteId });
+      return [...localProducts, ...externalProducts];
+    } catch {
+      return localProducts;
+    }
   } catch (error) {
     console.error("Error in fetchPublishedProducts:", error);
     return [];
@@ -422,7 +510,11 @@ async function _fetchPublishedProductsPaginated(
         whereClause += " AND p.category_id = ?";
         params.push(categoryId);
       } else {
-        return { products: [], total: 0 };
+        // The upstream category can be present in the synced catalog even if
+        // it has not been added to the site's category table yet. Keep local
+        // rows out of this filtered result while still allowing AppByMari rows
+        // to match their source category below.
+        whereClause += " AND 1 = 0";
       }
     }
 
@@ -439,7 +531,8 @@ async function _fetchPublishedProductsPaginated(
     const total = (countRows as any[])[0].count;
 
     // Get paginated
-    const selectParams = [siteId, ...params, String(limit), String(offset)];
+    const fetchLimit = Math.max(1, offset + limit);
+    const selectParams = [siteId, ...params, String(fetchLimit), "0"];
     const [rows] = await pool.execute(
       `SELECT p.*, spp.retail_price as site_retail_price, spp.price_vip as site_price_vip, spp.price_walkin as site_price_walkin, spp.image_url as site_image_url, COALESCE(JSON_LENGTH(p.account_data), p.stock, 0) as effective_stock 
        FROM products p
@@ -452,9 +545,34 @@ async function _fetchPublishedProductsPaginated(
       selectParams
     );
 
+    const localProducts = (rows as any[]).map((row) => toProduct(row));
+    let externalProducts: Product[] = [];
+    try {
+      externalProducts = await fetchEnabledAppByMariProducts({
+        siteId,
+        category: category ?? null,
+        searchTerm: searchTerm ?? null,
+      });
+    } catch {
+      externalProducts = [];
+    }
+
+    const priority = (product: Product) => {
+      const outOfStock = (product.stock ?? 0) <= 0 ? 1 : 0;
+      const badge = product.badge === "hot_sale" ? 0 : product.badge === "recommended" ? 1 : 2;
+      return [outOfStock, badge, product.name.toLocaleLowerCase()] as const;
+    };
+    const combined = [...localProducts, ...externalProducts].sort((left, right) => {
+      const a = priority(left);
+      const b = priority(right);
+      if (a[0] !== b[0]) return a[0] - b[0];
+      if (a[1] !== b[1]) return a[1] - b[1];
+      return a[2].localeCompare(b[2]);
+    });
+
     return {
-      products: (rows as any[]).map((row) => toProduct(row)),
-      total,
+      products: combined.slice(offset, offset + limit),
+      total: Number(total) + externalProducts.length,
     };
   } catch (error) {
     console.error("Error in fetchPublishedProductsPaginated:", error);
@@ -465,30 +583,32 @@ async function _fetchPublishedProductsPaginated(
 
 export async function findProductByTypeId(typeId: string): Promise<Product | null> {
   try {
+    if (parseAppByMariStorefrontTypeId(typeId)) {
+      const externalProduct = await findAppByMariStorefrontProduct(typeId, getSiteId());
+      if (externalProduct) return externalProduct;
+      return null;
+    }
     if (!(await isChildSiteApiEnabled())) return null;
     const siteId = getSiteId();
-    const [rows] = await pool.execute(
-      `SELECT p.*, spp.retail_price as site_retail_price, spp.image_url as site_image_url 
-       FROM products p
-       LEFT JOIN site_product_prices spp ON p.id = spp.product_id AND spp.site_id = ?
-       WHERE p.type_id = ? AND (p.is_local = 0 OR (p.is_local = 1 AND p.site_id = ?)) LIMIT 1`, 
-      [siteId, typeId, siteId]
-    );
-    const list = rows as any[];
-    if (list.length === 0) return null;
-    return toProduct(list[0]);
+    const row = await selectScopedProductRow(typeId, siteId);
+    return row ? toProduct(row) : null;
   } catch (error) {
     console.error("Error in findProductByTypeId:", error);
     throw error;
   }
 }
 
-export async function applyGlobalProfit(mode: "amount" | "percent", value: number): Promise<Product[]> {
+export async function applyGlobalProfit(
+  mode: "amount" | "percent",
+  value: number,
+  siteId: string = getSiteId(),
+): Promise<Product[]> {
   try {
     const now = new Date();
-    const siteId = getSiteId();
     const [rows] = await pool.execute(
-      "SELECT id, price_vip FROM products WHERE (is_local = 0 OR (is_local = 1 AND site_id = ?))",
+      `SELECT id, price_vip
+       FROM products
+       WHERE ${productVisibilityPredicate()}`,
       [siteId]
     );
     
@@ -499,8 +619,10 @@ export async function applyGlobalProfit(mode: "amount" | "percent", value: numbe
         const finalPrice = Number.isFinite(computed) ? Math.max(0, Number(computed.toFixed(2))) : cost;
         
         await pool.execute(
-          "UPDATE products SET price = ?, updated_at = ? WHERE id = ?",
-          [finalPrice, now, row.id]
+          `UPDATE products
+           SET price = ?, updated_at = ?
+           WHERE id = ? AND ${productVisibilityPredicate()}`,
+          [finalPrice, now, row.id, siteId]
         );
       }
     }
@@ -572,31 +694,49 @@ async function _fetchRecommendedProducts(): Promise<Product[]> {
 }
 
 
-export async function updateProductPublishStatus(typeId: string, isPublished: boolean): Promise<void> {
+export async function updateProductPublishStatus(
+  typeId: string,
+  isPublished: boolean,
+  productId?: string,
+): Promise<void> {
   try {
     const now = new Date();
-    const [result] = await pool.execute(
-      "UPDATE products SET is_published = ?, updated_at = ? WHERE type_id = ?",
-      [isPublished ? 1 : 0, now, typeId]
+    const siteId = getSiteId();
+    const current = await selectScopedProductRow(typeId, siteId, productId);
+    if (!current) throw new Error("ไม่พบสินค้า");
+    await pool.execute(
+      `UPDATE products
+       SET is_published = ?, updated_at = ?
+       WHERE id = ? AND type_id = ? AND ${productVisibilityPredicate()}`,
+      [isPublished ? 1 : 0, now, current.id, typeId, siteId]
     );
-    if ((result as any).affectedRows === 0) throw new Error("ไม่พบสินค้า");
-    const p = await findProductByTypeId(typeId);
-    if (p) await syncProductToFirestore(p);
+    const updated = await selectScopedProductRow(typeId, siteId, current.id);
+    if (!updated) throw new Error("ไม่พบสินค้า");
+    await syncProductToFirestore(toProduct(updated));
   } catch (error: any) {
     throw new Error(`อัปเดตสถานะสินค้าไม่สำเร็จ: ${error.message}`);
   }
 }
 
-export async function updateProductPrice(typeId: string, price: number): Promise<void> {
+export async function updateProductPrice(
+  typeId: string,
+  price: number,
+  productId?: string,
+): Promise<void> {
   try {
     const now = new Date();
-    const [result] = await pool.execute(
-      "UPDATE products SET price = ?, updated_at = ? WHERE type_id = ?",
-      [price, now, typeId]
+    const siteId = getSiteId();
+    const current = await selectScopedProductRow(typeId, siteId, productId);
+    if (!current) throw new Error("ไม่พบสินค้า");
+    await pool.execute(
+      `UPDATE products
+       SET price = ?, updated_at = ?
+       WHERE id = ? AND type_id = ? AND ${productVisibilityPredicate()}`,
+      [price, now, current.id, typeId, siteId]
     );
-    if ((result as any).affectedRows === 0) throw new Error("ไม่พบสินค้า");
-    const p = await findProductByTypeId(typeId);
-    if (p) await syncProductToFirestore(p);
+    const updated = await selectScopedProductRow(typeId, siteId, current.id);
+    if (!updated) throw new Error("ไม่พบสินค้า");
+    await syncProductToFirestore(toProduct(updated));
   } catch (error: any) {
     throw new Error(`อัปเดตราคาสินค้าไม่สำเร็จ: ${error.message}`);
   }
@@ -604,17 +744,23 @@ export async function updateProductPrice(typeId: string, price: number): Promise
 
 export async function updateProductBadge(
   typeId: string,
-  badge: 'hot_sale' | 'recommended' | null
+  badge: 'hot_sale' | 'recommended' | null,
+  productId?: string,
 ): Promise<void> {
   try {
     const now = new Date();
-    const [result] = await pool.execute(
-      "UPDATE products SET badge = ?, updated_at = ? WHERE type_id = ?",
-      [badge, now, typeId]
+    const siteId = getSiteId();
+    const current = await selectScopedProductRow(typeId, siteId, productId);
+    if (!current) throw new Error("ไม่พบสินค้า");
+    await pool.execute(
+      `UPDATE products
+       SET badge = ?, updated_at = ?
+       WHERE id = ? AND type_id = ? AND ${productVisibilityPredicate()}`,
+      [badge, now, current.id, typeId, siteId]
     );
-    if ((result as any).affectedRows === 0) throw new Error("ไม่พบสินค้า");
-    const p = await findProductByTypeId(typeId);
-    if (p) await syncProductToFirestore(p);
+    const updated = await selectScopedProductRow(typeId, siteId, current.id);
+    if (!updated) throw new Error("ไม่พบสินค้า");
+    await syncProductToFirestore(toProduct(updated));
   } catch (error: any) {
     throw new Error(`อัปเดต badge สินค้าไม่สำเร็จ: ${error.message}`);
   }
@@ -725,20 +871,18 @@ export async function updateProduct(
     isPublished?: boolean;
     badge?: 'hot_sale' | 'recommended' | null;
   },
-  forceStockUpdate: boolean = false
+  forceStockUpdate: boolean = false,
+  authorizedProductId?: string,
 ): Promise<Product> {
   try {
-    const [existingRows] = await pool.execute("SELECT * FROM products WHERE type_id = ? LIMIT 1", [typeId]);
-    const list = existingRows as any[];
-    if (list.length === 0) {
+    const siteId = getSiteId();
+    const current = await selectScopedProductRow(typeId, siteId, authorizedProductId);
+    if (!current) {
       throw new Error("ไม่พบสินค้าที่ต้องการแก้ไข");
     }
 
-    const current = list[0];
-    
-    const siteId = getSiteId();
     const isMainSite = siteId === 'main';
-    const isLocalProduct = current.is_local === 1;
+    const isLocalProduct = current.is_local === 1 || current.is_local === true;
     const canUpdateFully = isMainSite || isLocalProduct;
     const canUpdateStock = canUpdateFully || forceStockUpdate;
 
@@ -767,84 +911,81 @@ export async function updateProduct(
       }
     }
 
-    // For main site or local products, use updates if provided. For child site, force using current values to prevent overwriting main site data.
-    const name = (canUpdateFully && updates.name !== undefined) ? updates.name : current.name;
-    const imageUrl = (canUpdateFully && updates.imageUrl !== undefined) ? updates.imageUrl : current.image_url;
-    const details = (canUpdateFully && updates.details !== undefined) ? updates.details : current.details;
-    
-    // For main site or local products, update the prices in main table. For child site, keep the current main prices.
-    const price = (canUpdateFully && updates.price !== undefined) ? updates.price : current.price;
-    const priceVip = (canUpdateFully && updates.priceVip !== undefined) ? updates.priceVip : current.price_vip;
-    const costPrice = (canUpdateFully && updates.costPrice !== undefined) ? updates.costPrice : current.cost_price;
-    const priceWalkin = (canUpdateFully && updates.priceWalkin !== undefined) ? updates.priceWalkin : current.price_walkin;
-    
-    let accountDataObj: ProductAccount[] = [];
-    let stock = current.stock;
-    if (canUpdateStock && updates.accountData !== undefined) {
-      accountDataObj = updates.accountData || [];
-      stock = updates.accountData ? updates.accountData.length : 0;
-    } else {
-      accountDataObj = safeParseJson<ProductAccount[]>(current.account_data) || [];
-      if (canUpdateStock && updates.stock !== undefined) {
-        stock = updates.stock;
+    let updatedProduct: Product;
+
+    // Shared/global products on a child site keep their canonical row intact;
+    // only the child-specific price/image overlay is writable. Stock writes
+    // with forceStockUpdate remain supported for the existing checkout path.
+    if (canUpdateFully || forceStockUpdate) {
+      // For main site or local products, use updates if provided. For child site, force using current values to prevent overwriting main site data.
+      const name = (canUpdateFully && updates.name !== undefined) ? updates.name : current.name;
+      const imageUrl = (canUpdateFully && updates.imageUrl !== undefined) ? updates.imageUrl : current.image_url;
+      const details = (canUpdateFully && updates.details !== undefined) ? updates.details : current.details;
+
+      // For main site or local products, update the prices in main table. For child site, keep the current main prices.
+      const price = (canUpdateFully && updates.price !== undefined) ? updates.price : current.price;
+      const priceVip = (canUpdateFully && updates.priceVip !== undefined) ? updates.priceVip : current.price_vip;
+      const costPrice = (canUpdateFully && updates.costPrice !== undefined) ? updates.costPrice : current.cost_price;
+      const priceWalkin = (canUpdateFully && updates.priceWalkin !== undefined) ? updates.priceWalkin : current.price_walkin;
+
+      let accountDataObj: ProductAccount[] = [];
+      let stock = current.stock;
+      if (canUpdateStock && updates.accountData !== undefined) {
+        accountDataObj = updates.accountData || [];
+        stock = updates.accountData ? updates.accountData.length : 0;
+      } else {
+        accountDataObj = safeParseJson<ProductAccount[]>(current.account_data) || [];
+        if (canUpdateStock && updates.stock !== undefined) {
+          stock = updates.stock;
+        }
       }
+
+      const categoryId = (canUpdateFully && updates.categoryId !== undefined) ? updates.categoryId : current.category_id;
+      const accountEmail = (canUpdateFully && updates.accountEmail !== undefined) ? updates.accountEmail : current.account_email;
+      const accountPassword = (canUpdateFully && updates.accountPassword !== undefined) ? updates.accountPassword : current.account_password;
+      const isPublished = (canUpdateFully && updates.isPublished !== undefined) ? updates.isPublished : current.is_published;
+      const badge = (canUpdateFully && updates.badge !== undefined) ? updates.badge : current.badge;
+      const now = new Date();
+
+      await pool.execute(
+        `UPDATE products
+         SET name = ?, image_url = ?, details = ?, price = ?, price_vip = ?, cost_price = ?, price_walkin = ?, stock = ?, category_id = ?, account_email = ?, account_password = ?, account_data = ?, is_published = ?, badge = ?, updated_at = ?
+         WHERE id = ? AND type_id = ? AND ${productVisibilityPredicate()}`,
+        [
+          name,
+          imageUrl,
+          details,
+          price,
+          priceVip,
+          costPrice,
+          priceWalkin,
+          stock,
+          categoryId,
+          accountEmail,
+          accountPassword,
+          JSON.stringify(accountDataObj),
+          isPublished ? 1 : 0,
+          badge,
+          now,
+          current.id,
+          typeId,
+          siteId,
+        ]
+      );
+
+      const updatedRow = await selectScopedProductRow(typeId, siteId, current.id);
+      if (!updatedRow) throw new Error("ไม่พบสินค้าที่ต้องการแก้ไข");
+      updatedProduct = toProduct(updatedRow);
+    } else {
+      const updatedRow = await selectScopedProductRow(typeId, siteId, current.id);
+      if (!updatedRow) throw new Error("ไม่พบสินค้าที่ต้องการแก้ไข");
+      updatedProduct = toProduct(updatedRow);
     }
-
-    const categoryId = (canUpdateFully && updates.categoryId !== undefined) ? updates.categoryId : current.category_id;
-    const accountEmail = (canUpdateFully && updates.accountEmail !== undefined) ? updates.accountEmail : current.account_email;
-    const accountPassword = (canUpdateFully && updates.accountPassword !== undefined) ? updates.accountPassword : current.account_password;
-    const isPublished = (canUpdateFully && updates.isPublished !== undefined) ? updates.isPublished : current.is_published;
-    const badge = (canUpdateFully && updates.badge !== undefined) ? updates.badge : current.badge;
-    const now = new Date();
-
-    await pool.execute(
-      `UPDATE products 
-       SET name = ?, image_url = ?, details = ?, price = ?, price_vip = ?, cost_price = ?, price_walkin = ?, stock = ?, category_id = ?, account_email = ?, account_password = ?, account_data = ?, is_published = ?, badge = ?, updated_at = ? 
-       WHERE type_id = ?`,
-      [
-        name,
-        imageUrl,
-        details,
-        price,
-        priceVip,
-        costPrice,
-        priceWalkin,
-        stock,
-        categoryId,
-        accountEmail,
-        accountPassword,
-        JSON.stringify(accountDataObj),
-        isPublished ? 1 : 0,
-        badge,
-        now,
-        typeId
-      ]
-    );
-
-    const updatedProduct = toProduct({
-      ...current,
-      name,
-      image_url: imageUrl,
-      details,
-      price,
-      price_vip: priceVip,
-      cost_price: costPrice,
-      price_walkin: priceWalkin,
-      stock,
-      category_id: categoryId,
-      account_email: accountEmail,
-      account_password: accountPassword,
-      account_data: accountDataObj,
-      is_published: isPublished ? 1 : 0,
-      badge,
-      updated_at: now
-    });
 
     await syncProductToFirestore(updatedProduct);
 
     // ถ้าเป็นเว็บลูก ให้ส่ง Webhook ไปแจ้งเว็บแม่ให้ล้าง Cache และอัปเดต Firebase ด้วย
-    const currentSiteId = getSiteId();
-    if (currentSiteId !== 'main' && process.env.NEXT_PUBLIC_MAIN_SITE_URL && process.env.MAIN_SITE_SYNC_SECRET) {
+    if (siteId !== 'main' && process.env.NEXT_PUBLIC_MAIN_SITE_URL && process.env.MAIN_SITE_SYNC_SECRET) {
       fetch(`${process.env.NEXT_PUBLIC_MAIN_SITE_URL}/api/admin/products/sync-main`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -858,11 +999,18 @@ export async function updateProduct(
   }
 }
 
-export async function deleteProduct(typeId: string): Promise<void> {
+export async function deleteProduct(typeId: string, authorizedProductId?: string): Promise<void> {
   try {
-    const product = await findProductByTypeId(typeId);
+    const siteId = getSiteId();
+    const productRow = await selectScopedProductRow(typeId, siteId, authorizedProductId);
+    const product = productRow ? toProduct(productRow) : null;
     if (!product) {
       throw new Error("ไม่พบสินค้า");
+    }
+
+    const isLocalProduct = productRow?.is_local === 1 || productRow?.is_local === true;
+    if (siteId !== "main" && !isLocalProduct) {
+      throw new Error("ไม่สามารถลบสินค้าหลักจากเว็บลูกได้");
     }
 
     // Check orders
@@ -875,7 +1023,14 @@ export async function deleteProduct(typeId: string): Promise<void> {
       throw new Error("ไม่สามารถลบสินค้าได้ เนื่องจากมีคำสั่งซื้อที่เกี่ยวข้อง");
     }
 
-    await pool.execute("DELETE FROM products WHERE type_id = ?", [typeId]);
+    const [result] = await pool.execute(
+      `DELETE FROM products
+       WHERE id = ? AND type_id = ? AND ${productVisibilityPredicate()}`,
+      [product.id, typeId, siteId],
+    );
+    if ((result as any).affectedRows !== 1) {
+      throw new Error("ไม่พบสินค้า");
+    }
 
     // Delete from Firestore
     const projectId = process.env.FIREBASE_PROJECT_ID;

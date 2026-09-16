@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/server";
+import { isAdminUser } from "@/lib/auth/roles";
 import {
   getAdminAuditRequestContext,
   recordAdminAuditEvent,
@@ -27,18 +28,17 @@ const MIME_TO_EXTENSION: Record<string, string> = {
 };
 const LOGIN_BACKGROUND_ASPECT_RATIO = 16 / 9;
 const LOGIN_BACKGROUND_ASPECT_TOLERANCE = 0.02;
+type RequestFormData = { get(name: string): string | File | null };
 
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    const isAdmin = Boolean(
-      user && (user.role === "admin" || user.role === "superadmin" || user.isAdmin)
-    );
+    const isAdmin = isAdminUser(user);
     if (!user || !isAdmin) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await req.formData();
+    const formData = await req.formData() as unknown as RequestFormData;
     const file = formData.get("file") as File | null;
     if (!file) {
       return NextResponse.json({ message: "No file provided" }, { status: 400 });

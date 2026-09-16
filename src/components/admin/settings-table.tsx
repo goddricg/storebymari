@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
+import { resolveSiteBrandLogo, SITE_BRAND_LOGO_ALT } from "@/lib/site-branding";
 
 type Setting = {
   key: string;
@@ -59,7 +59,13 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
       }
       const data = (await res.json()) as { settings: Setting[] };
       setSettings(data.settings);
-      const initialDrafts: Record<string, string> = {};
+      // These fields have dedicated controls below and may not exist yet in a
+      // fresh database. Keep them in the draft map so the first save can
+      // create the setting row instead of silently ignoring the input.
+      const initialDrafts: Record<string, string> = {
+        site_title: "",
+        site_name: "",
+      };
       data.settings.forEach((setting) => {
         initialDrafts[setting.key] = setting.value ?? "";
       });
@@ -135,12 +141,13 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
 
   const announcementText = drafts["announcement_text"] ?? "";
   const announcementEnabled = drafts["announcement_enabled"] === "true";
-  const posterEnabled = drafts["home_poster_enabled"] === "true";
+  const posterEnabled = drafts["home_poster_enabled"] !== "false";
   const registrationEnabled = drafts["registration_enabled"] === "true";
   const youtubeEnabled = drafts["home_youtube_enabled"] === "true";
   const moviesEnabled = drafts["home_movies_enabled"] === "true";
   const featuredEnabled = drafts["home_featured_enabled"] !== "false";
-  const shortcutsEnabled = drafts["home_shortcuts_enabled"] === "true";
+  const shortcutsEnabled = drafts["home_shortcuts_enabled"] !== "false";
+  const shortcutsCount = drafts["home_shortcuts_count"] || "4";
   const rankingEnabled = drafts["ranking_enabled"] !== "false";
   const rankingRealtime = drafts["ranking_realtime"] === "true";
   const rankingShowAvatar = drafts["ranking_show_avatar"] !== "false";
@@ -375,8 +382,8 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative flex h-16 w-32 items-center justify-center overflow-hidden rounded-lg bg-zinc-100 border border-[var(--theme-color)]/20">
                 <img
-                  src={drafts["site_logo_url"] || SITE_BRAND_LOGO_PATH}
-                  alt="Site Logo"
+                  src={resolveSiteBrandLogo(drafts["site_logo_url"])}
+                  alt={SITE_BRAND_LOGO_ALT}
                   className="h-full w-full object-contain p-2"
                 />
               </div>
@@ -422,7 +429,7 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
               type="text"
               value={drafts["site_title"] ?? ""}
               onChange={(e) => handleDraftChange("site_title", e.target.value)}
-              placeholder="App By Mari | ขายแอพพรีเมียมราคาถูก Netflix, Spotify, YouTube แท้"
+              placeholder="✨ Store By Mari ✨ แอปพรีเมียมราคาถูก | Netflix • YouTube • Spotify – Etc."
               className="rounded-lg border-[var(--theme-color)]/30 bg-white focus-visible:ring-[var(--theme-color)]"
               disabled={isPending || isSaving}
             />
@@ -458,7 +465,7 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
                   แสดงปุ่มลัด (Shortcut Buttons) หน้าแรก
                 </Label>
                 <p className="text-xs text-[#6B7280]">
-                  เปิด/ปิด การแสดงปุ่มลัด 4 ปุ่มใต้แถบประกาศหน้าแรก
+                  เปิด/ปิด การแสดงปุ่มลัดใต้ Hero Section หน้าแรก
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -474,8 +481,32 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
               </div>
             </div>
 
+            <div className="flex flex-col gap-3 rounded-lg border border-dashed border-[var(--theme-color)]/40 bg-white/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="home_shortcuts_count" className="text-sm font-semibold text-[#0B0B0B]">
+                  จำนวน Shortcut Card ที่แสดง
+                </Label>
+                <p className="text-xs text-[#6B7280]">
+                  เลือกได้ 0–4 การ์ด ระบบจะแสดงแบบ 2 คอลัมน์เมื่อเปิดครบ 4 การ์ด
+                </p>
+              </div>
+              <select
+                id="home_shortcuts_count"
+                value={shortcutsCount}
+                onChange={(event) => handleDraftChange("home_shortcuts_count", event.target.value)}
+                disabled={isPending || isSaving}
+                className="h-9 rounded-lg border border-[var(--theme-color)]/30 bg-white px-3 text-sm text-[#0B0B0B] outline-none focus:ring-2 focus:ring-[var(--theme-color)]/30"
+              >
+                {[0, 1, 2, 3, 4].map((count) => (
+                  <option key={count} value={count}>
+                    {count} การ์ด
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="space-y-3">
-              <Label className="text-sm font-semibold text-[#0B0B0B]">ตั้งค่าปุ่มลัดทั้ง 4 ปุ่ม (ขนาดแนะนำ 480x200px)</Label>
+              <Label className="text-sm font-semibold text-[#0B0B0B]">ตั้งค่า Shortcut Card ทั้ง 4 ช่อง (ขนาดแนะนำ 480x200px)</Label>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {[1, 2, 3, 4].map((num) => {
                   const imgKey = `home_shortcut_image_${num}`;
@@ -1226,17 +1257,17 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
 
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold text-[#0B0B0B]">โปสเตอร์หน้าแรก</h3>
-          <p className="text-sm text-[#6B7280]">ตั้งค่าแบนเนอร์รูปภาพที่จะขึ้นใต้ Navbar ในหน้าแรก</p>
+          <h3 className="text-lg font-semibold text-[#0B0B0B]">Hero / Poster หน้าแรก</h3>
+          <p className="text-sm text-[#6B7280]">ตั้งค่าภาพ Hero Section หน้าแรกผ่านระบบจัดการโปสเตอร์เดิม</p>
         </div>
         <div className="space-y-5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-6">
           <div className="flex flex-col gap-3 rounded-lg border border-dashed border-[var(--theme-color)]/40 bg-white/70 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <Label htmlFor="home_poster_enabled" className="text-sm text-[#0B0B0B]">
-                แสดงโปสเตอร์หน้าแรก
+                แสดง Hero / Poster หน้าแรก
               </Label>
               <p className="text-xs text-[#6B7280]">
-                เปิด/ปิดการแสดงโปสเตอร์รูปภาพใต้ Navbar (แนะนำใส่รูปขนาด 1600x900px)
+                เปิด/ปิดภาพ Hero ที่แสดงใต้ Navbar (แนะนำใส่รูปขนาด 1600x900px)
               </p>
             </div>
             <div className="flex items-center gap-3">

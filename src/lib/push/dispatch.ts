@@ -6,6 +6,7 @@ import {
   StoredPushSubscription,
 } from "./repository";
 import { summarizeSupportCaseProblem } from "@/lib/support/notifications";
+import { SITE_BRAND_PWA_BADGE_PATH, SITE_BRAND_PWA_ICON_192_PATH } from "@/lib/site-branding";
 
 export interface PushNotificationPayload {
   title: string;
@@ -77,8 +78,8 @@ export async function sendPushNotification(
   const payloadString = JSON.stringify({
     title: payload.title,
     body: payload.body,
-    icon: payload.icon || "/icon-192x192.png",
-    badge: payload.badge || "/badge-72x72.png",
+    icon: payload.icon || SITE_BRAND_PWA_ICON_192_PATH,
+    badge: payload.badge || SITE_BRAND_PWA_BADGE_PATH,
     tag: payload.tag || "push-" + Date.now(),
     url: payload.url || "/admin/support",
     data: payload.data || {},
@@ -136,8 +137,8 @@ export async function dispatchSupportCaseNotificationToAdmins(
   const payload: PushNotificationPayload = {
     title: `🚨 เคสปัญหาใหม่: ${params.caseCode}`,
     body: `${prodPrefix}${problemText} (แจ้งโดย ${reporter})`,
-    icon: "/icon-192x192.png",
-    badge: "/badge-72x72.png",
+    icon: SITE_BRAND_PWA_ICON_192_PATH,
+    badge: SITE_BRAND_PWA_BADGE_PATH,
     tag: `support-${params.caseCode}`,
     url: `/admin?menu=support&caseId=${encodeURIComponent(params.id)}`,
     data: {
@@ -214,8 +215,8 @@ export async function dispatchNotificationToUser(
   const payload: PushNotificationPayload = {
     title: params.title,
     body: params.body,
-    icon: "/icon-192x192.png",
-    badge: "/badge-72x72.png",
+    icon: SITE_BRAND_PWA_ICON_192_PATH,
+    badge: SITE_BRAND_PWA_BADGE_PATH,
     tag: params.tag || `notif-${Date.now()}`,
     url: params.url || "/",
     data: {

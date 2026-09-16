@@ -109,7 +109,7 @@ async function verifyLocalAdminAccess(email, password) {
     const loginBody = await loginResponse.json();
     if (
       !loginResponse.ok ||
-      loginBody?.user?.role !== "superadmin" ||
+      loginBody?.user?.role !== "owner" ||
       !loginBody?.token
     ) {
       result.loginApi = `failed_${loginResponse.status}`;
@@ -174,7 +174,7 @@ async function createOrPromoteLocalOwner() {
           points, user_tier, site_id, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          randomUUID(), email, passwordHash, "Owner", "superadmin", 1, 1,
+          randomUUID(), email, passwordHash, "Owner", "owner", 1, 1,
           0, "walkin", "main", now, now,
         ],
       );
@@ -191,7 +191,7 @@ async function createOrPromoteLocalOwner() {
 
       passwordHash = existing.password_hash;
       const isReady =
-        existing.role === "superadmin" &&
+        existing.role === "owner" &&
         Number(existing.is_admin) === 1 &&
         Number(existing.is_active) === 1 &&
         Number(existing.is_banned) === 0;
@@ -201,7 +201,7 @@ async function createOrPromoteLocalOwner() {
         action = "promoted";
         await connection.execute(
           `UPDATE users
-           SET display_name = 'Owner', role = 'superadmin', is_admin = 1,
+           SET display_name = 'Owner', role = 'owner', is_admin = 1,
                is_active = 1, is_banned = 0, updated_at = ?
            WHERE id = ? AND site_id = ?`,
           [new Date(), existing.id, "main"],
@@ -218,7 +218,7 @@ async function createOrPromoteLocalOwner() {
     );
     const verified =
       verifiedRows.length === 1 &&
-      verifiedRows[0].role === "superadmin" &&
+      verifiedRows[0].role === "owner" &&
       Number(verifiedRows[0].is_admin) === 1 &&
       Number(verifiedRows[0].is_active) === 1 &&
       Number(verifiedRows[0].is_banned) === 0 &&
@@ -231,7 +231,7 @@ async function createOrPromoteLocalOwner() {
 
     const access = await verifyLocalAdminAccess(email, password);
     process.stdout.write(
-      `${JSON.stringify({ action, role: "superadmin", site: "main", accountVerified: true, ...access })}\n`,
+      `${JSON.stringify({ action, role: "owner", site: "main", accountVerified: true, ...access })}\n`,
     );
   } catch (error) {
     await connection.rollback().catch(() => undefined);

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/server";
+import { canUseMainSiteMimiAutopilot } from "@/lib/auth/access-policies";
+import { getSiteId } from "@/lib/site";
 import { getSettingValue, updateSetting } from "@/lib/settings/repository";
 import { generateMimiRestockCopy, generateMimiPromoCopy } from "@/lib/ai/mimi-generator";
 import {
@@ -9,12 +11,21 @@ import {
   processDuePromoBroadcasts,
 } from "@/lib/ai/mimi-promo-scheduler";
 
-export async function GET() {
+async function authorizeMainSiteMimiAutopilot() {
   const me = await getCurrentUser();
-  const isAdmin = me?.role === "superadmin" || me?.role === "admin" || me?.isAdmin;
-  if (!me || !isAdmin) {
-    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  if (!me) {
+    return { user: null, response: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
   }
+  if (!canUseMainSiteMimiAutopilot(getSiteId(), me)) {
+    return { user: null, response: NextResponse.json({ message: "Forbidden" }, { status: 403 }) };
+  }
+  return { user: me, response: null };
+}
+
+export async function GET() {
+  const authorization = await authorizeMainSiteMimiAutopilot();
+  if (authorization.response) return authorization.response;
+  const siteId = getSiteId();
 
   const enabledVal = await getSettingValue("mimi_autopilot_enabled");
   const promoEnabledVal = await getSettingValue("mimi_promo_scheduler_enabled");
@@ -24,7 +35,7 @@ export async function GET() {
   const promoEnabled = promoEnabledVal !== "false";
   const timesPerProduct = Math.max(1, parseInt(quotaVal || "2", 10));
 
-  const schedule = await getDailyPromoSchedule();
+  const schedule = await getDailyPromoSchedule(siteId);
 
   return NextResponse.json({
     enabled,
@@ -36,11 +47,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const me = await getCurrentUser();
-  const isAdmin = me?.role === "superadmin" || me?.role === "admin" || me?.isAdmin;
-  if (!me || !isAdmin) {
-    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-  }
+  const authorization = await authorizeMainSiteMimiAutopilot();
+  if (authorization.response) return authorization.response;
+  const siteId = getSiteId();
 
   try {
     const body = await request.json();
@@ -94,7 +103,7 @@ export async function POST(request: Request) {
     if (body.action === "toggle_promo") {
       const isEnabled = Boolean(body.enabled);
       await updateSetting("mimi_promo_scheduler_enabled", isEnabled ? "true" : "false");
-      const schedule = await getDailyPromoSchedule();
+      const schedule = await getDailyPromoSchedule(siteId);
       return NextResponse.json({
         success: true,
         promoEnabled: isEnabled,
@@ -106,7 +115,7 @@ export async function POST(request: Request) {
     if (body.action === "set_quota") {
       const quota = Math.max(1, Math.min(5, parseInt(body.quota || "2", 10)));
       await updateSetting("mimi_promo_times_per_product", String(quota));
-      const schedule = await generateDailyPromoSchedule({ force: true, timesPerProduct: quota });
+      const schedule = await generateDailyPromoSchedule({ force: true, timesPerProduct: quota, siteId });
       return NextResponse.json({
         success: true,
         timesPerProduct: quota,
@@ -118,7 +127,7 @@ export async function POST(request: Request) {
     if (body.action === "regenerate_schedule") {
       const quotaVal = await getSettingValue("mimi_promo_times_per_product");
       const quota = Math.max(1, parseInt(quotaVal || "2", 10));
-      const schedule = await generateDailyPromoSchedule({ force: true, timesPerProduct: quota });
+      const schedule = await generateDailyPromoSchedule({ force: true, timesPerProduct: quota, siteId });
       return NextResponse.json({
         success: true,
         schedule,
@@ -127,8 +136,8 @@ export async function POST(request: Request) {
 
     // Handle trigger next queue item now
     if (body.action === "trigger_next") {
-      const result = await triggerNextPromoQueueNow();
-      const schedule = await getDailyPromoSchedule();
+      const result = await triggerNextPromoQueueNow(siteId);
+      const schedule = await getDailyPromoSchedule(siteId);
       return NextResponse.json({
         success: result.success,
         message: result.message,
@@ -139,8 +148,8 @@ export async function POST(request: Request) {
 
     // Handle process due
     if (body.action === "process_due") {
-      const result = await processDuePromoBroadcasts();
-      const schedule = await getDailyPromoSchedule();
+      const result = await processDuePromoBroadcasts(siteId);
+      const schedule = await getDailyPromoSchedule(siteId);
       return NextResponse.json({
         success: true,
         processedCount: result.processedCount,

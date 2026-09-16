@@ -26,6 +26,7 @@ import {
   Percent,
   Sparkles,
   Brain,
+  Store,
   type LucideIcon,
 } from 'lucide-react'
 import OperatorMimiCenter from '@/components/admin/operator-mimi-center'
@@ -54,13 +55,14 @@ import AdminAuditCenter from '@/components/admin/admin-audit-center'
 import PurchaseCasesTable from '@/components/admin/purchase-cases-table'
 import { useSession } from '@/lib/auth/use-session'
 import { isSuperAdminUser } from '@/lib/auth/roles'
+import AppByMariProductsTable from '@/components/admin/appbymari-products-table'
 
 // เมนูสำหรับ admin ปกติ
 const ADMIN_MENU_ITEMS = [
   { id: 'operator-mimi', label: 'Operator By Mimi', icon: Sparkles },
   { id: 'mimi-training', label: 'ห้องสอนงานมิมิ', icon: Brain },
   { id: 'users', label: 'ผู้ใช้', icon: Users },
-  { id: 'netflix-manage', label: 'จัดการ Account Netflix', icon: Tv, href: 'https://manage.storebymari.com' },
+  { id: 'netflix-manage', label: 'จัดการ Account Netflix', icon: Tv, href: 'https://manage.appbymari.com' },
   { id: 'analytics', label: 'สถิติ', icon: Activity },
   { id: 'product-sales-history', label: 'ประวัติการขายสินค้า', icon: ShoppingBag },
   { id: 'support', label: 'เคสแจ้งปัญหา', icon: MessageSquare },
@@ -75,11 +77,12 @@ const SUPERADMIN_MENU_ITEMS = [
   { id: 'operator-mimi', label: 'Operator By Mimi', icon: Sparkles },
   { id: 'mimi-training', label: 'ห้องสอนงานมิมิ', icon: Brain },
   { id: 'users', label: 'ผู้ใช้', icon: Users },
-  { id: 'netflix-manage', label: 'จัดการ Account Netflix', icon: Tv, href: 'https://manage.storebymari.com' },
+  { id: 'netflix-manage', label: 'จัดการ Account Netflix', icon: Tv, href: 'https://manage.appbymari.com' },
   { id: 'analytics', label: 'สถิติ', icon: Activity },
   { id: 'product-sales-history', label: 'ประวัติการขายสินค้า', icon: ShoppingBag },
   { id: 'categories', label: 'หมวดหมู่', icon: Package },
   { id: 'products', label: 'สินค้า', icon: Package },
+  { id: 'appbymari-products', label: 'สินค้า API จากร้านหลัก', icon: Store },
   { id: 'stock', label: 'จัดการสต็อก', icon: Warehouse },
   { id: 'support', label: 'เคสแจ้งปัญหา', icon: MessageSquare },
   { id: 'discount', label: 'จัดการส่วนลด', icon: Percent },
@@ -97,7 +100,7 @@ const SUPERADMIN_MENU_ITEMS = [
 
 const CHILD_ADMIN_MENU_ITEMS = [
   { id: 'users', label: 'จัดการผู้ใช้', icon: Users },
-  { id: 'netflix-manage', label: 'จัดการ Account Netflix', icon: Tv, href: 'https://manage.storebymari.com' },
+  { id: 'netflix-manage', label: 'จัดการ Account Netflix', icon: Tv, href: 'https://manage.appbymari.com' },
   { id: 'analytics', label: 'สถิติ', icon: Activity },
   { id: 'product-sales-history', label: 'ประวัติการขายสินค้า', icon: ShoppingBag },
   { id: 'support', label: 'แจ้งปัญหา', icon: MessageSquare },
@@ -344,6 +347,9 @@ export default function AdminLayout() {
             </CardContent>
           </Card>
         )
+      case 'appbymari-products':
+        if (isChildSite || !isSuperAdmin) return null
+        return <AppByMariProductsTable />
       case 'local-products':
         return (
           <Card className="border-transparent bg-white/95 shadow-lg shadow-black/5">

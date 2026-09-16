@@ -12,7 +12,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { triggerHaptic } from "@/lib/ui/haptics";
-import { SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
+import {
+  SITE_BRAND_LOGO_ALT,
+  SITE_BRAND_LOGO_HEIGHT,
+  SITE_BRAND_LOGO_PATH,
+  SITE_BRAND_LOGO_WIDTH,
+} from "@/lib/site-branding";
 
 export interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -245,9 +250,9 @@ export function PwaInstallProvider({ children }: { children: React.ReactNode }) 
             <div className="relative mb-3 flex h-16 w-24 items-center justify-center rounded-2xl bg-[#ff7a00]/10 p-1 ring-1 ring-[#ff7a00]/30">
               <Image
                 src={SITE_BRAND_LOGO_PATH}
-                alt="Mari Studio logo"
-                width={1536}
-                height={1024}
+                alt={SITE_BRAND_LOGO_ALT}
+                width={SITE_BRAND_LOGO_WIDTH}
+                height={SITE_BRAND_LOGO_HEIGHT}
                 sizes="88px"
                 className="h-full w-full object-contain"
               />

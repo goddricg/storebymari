@@ -582,7 +582,7 @@ export default function ProductsGridClient({
                     }
                   }}
                   disabled={currentPage === 1 || isLoading}
-                  className="theme-border-40 text-[var(--theme-color)] theme-hover-bg-10 hover:border-[var(--theme-color)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="theme-border-40 !text-[#0B0B0B] theme-hover-bg-10 hover:border-[var(--theme-color)] hover:!text-[#0B0B0B] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   ก่อนหน้า
                 </Button>
@@ -591,7 +591,7 @@ export default function ProductsGridClient({
                   value={currentPage}
                   onChange={(event) => setCurrentPage(Number(event.currentTarget.value))}
                   disabled={isLoading}
-                  className="h-9 w-[5.25rem] shrink-0 rounded-md border border-[var(--dreamy-border)] bg-white px-2 text-center text-xs font-medium text-[var(--theme-color)] focus:outline-none focus:ring-2 focus:ring-[var(--theme-color)]/30 disabled:opacity-50"
+                  className="h-9 w-[5.25rem] shrink-0 rounded-md border border-[var(--dreamy-border)] bg-white px-2 text-center text-xs font-medium text-[#0B0B0B] focus:outline-none focus:ring-2 focus:ring-[var(--theme-color)]/30 disabled:opacity-50"
                 >
                   {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNum) => (
                     <option key={pageNum} value={pageNum}>หน้า {pageNum}</option>
@@ -606,7 +606,7 @@ export default function ProductsGridClient({
                     }
                   }}
                   disabled={currentPage === totalPages || isLoading}
-                  className="shrink-0 theme-border-40 text-[var(--theme-color)] theme-hover-bg-10 hover:border-[var(--theme-color)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="shrink-0 theme-border-40 !text-[#0B0B0B] theme-hover-bg-10 hover:border-[var(--theme-color)] hover:!text-[#0B0B0B] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isHomeLayout ? 'NEXT' : 'ถัดไป'}
                   <ChevronRight className="size-4" />
@@ -614,7 +614,7 @@ export default function ProductsGridClient({
               </div>
               <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-[#9a5832]">
+                  <p className="text-sm text-[#0B0B0B]">
                     แสดง <span className="font-medium text-[#0B0B0B]">{((currentPage - 1) * itemsPerPage) + 1}</span> ถึง{' '}
                     <span className="font-medium text-[#0B0B0B]">
                       {Math.min(currentPage * itemsPerPage, total)}
@@ -632,7 +632,7 @@ export default function ProductsGridClient({
                       }
                     }}
                     disabled={currentPage === 1 || isLoading}
-                    className="theme-border-40 text-[var(--theme-color)] theme-hover-bg-10 hover:border-[var(--theme-color)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="theme-border-40 !text-[#0B0B0B] theme-hover-bg-10 hover:border-[var(--theme-color)] hover:!text-[#0B0B0B] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="size-4" />
                     ก่อนหน้า
@@ -642,7 +642,7 @@ export default function ProductsGridClient({
                     {getPageNumbers().map((page, index) => {
                       if (page === '...') {
                         return (
-                          <span key={`ellipsis-${index}`} className="px-2 text-sm text-[#9a5832]">
+                          <span key={`ellipsis-${index}`} className="px-2 text-sm text-[#0B0B0B]">
                             ...
                           </span>
                         )
@@ -658,8 +658,8 @@ export default function ProductsGridClient({
                           disabled={isLoading}
                           className={
                             currentPage === pageNum
-                              ? 'bg-[var(--theme-color)] text-white hover:bg-[var(--theme-color)] border-[var(--theme-color)]'
-                              : 'theme-border-40 text-[var(--theme-color)] theme-hover-bg-10 hover:border-[var(--theme-color)]'
+                              ? 'bg-[var(--theme-color)] !text-[#0B0B0B] hover:bg-[var(--theme-color)] hover:!text-[#0B0B0B] border-[var(--theme-color)]'
+                              : 'theme-border-40 !text-[#0B0B0B] theme-hover-bg-10 hover:border-[var(--theme-color)] hover:!text-[#0B0B0B]'
                           }
                         >
                           {pageNum}
@@ -677,7 +677,7 @@ export default function ProductsGridClient({
                       }
                     }}
                     disabled={currentPage === totalPages || isLoading}
-                    className="theme-border-40 text-[var(--theme-color)] theme-hover-bg-10 hover:border-[var(--theme-color)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="theme-border-40 !text-[#0B0B0B] theme-hover-bg-10 hover:border-[var(--theme-color)] hover:!text-[#0B0B0B] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isHomeLayout ? 'NEXT' : 'ถัดไป'}
                     <ChevronRight className="size-4" />

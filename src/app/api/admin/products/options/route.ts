@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/server";
+import { isAdminUser } from "@/lib/auth/roles";
 import { getSiteId } from "@/lib/site";
 import {
   deletePurchaseOptionForProduct,
@@ -31,7 +32,7 @@ const saveSchema = z.object({
 
 async function requireMainAdmin() {
   const me = await getCurrentUser();
-  const isAdmin = me?.role === "superadmin" || me?.role === "admin" || me?.isAdmin;
+  const isAdmin = isAdminUser(me);
   if (!me || !isAdmin) {
     return null;
   }

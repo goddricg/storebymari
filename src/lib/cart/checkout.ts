@@ -3,6 +3,7 @@ import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/prom
 
 import pool from "@/lib/mysql";
 import { getSiteId } from "@/lib/site";
+import { isAdminRole } from "@/lib/auth/roles";
 import { getEffectiveUserTier } from "@/lib/auth/tier";
 import { getPriceByTier } from "@/lib/utils/pricing";
 import { getAccountInventory, type StockAccount } from "@/lib/products/stock-utils";
@@ -346,7 +347,7 @@ async function lockProduct(
 }
 
 function unitPrice(product: ProductRow, user: UserRow): number {
-  const isAdmin = user.role === "admin" || user.role === "superadmin" || user.is_admin === 1 || user.is_admin === true;
+  const isAdmin = isAdminRole(user.role) || user.is_admin === 1 || user.is_admin === true;
   const retailPrice = product.site_retail_price ?? product.price;
   const priceVip = product.site_price_vip ?? product.price_vip;
   const priceWalkin = product.site_price_walkin ?? product.price_walkin;

@@ -7,8 +7,9 @@ import { normalizeEmail } from "@/lib/auth/password";
 import { randomUUID } from "crypto";
 import { getSiteId } from "@/lib/site";
 import { getEffectiveUserTier, toOptionalIsoDate, type ManagedUserTier } from "@/lib/auth/tier";
+import { isAdminRole } from "@/lib/auth/roles";
 
-export type UserRole = 'user' | 'admin' | 'superadmin';
+export type UserRole = 'user' | 'admin' | 'superadmin' | 'owner';
 export type UserTier = ManagedUserTier;
 
 export type UserRecord = {
@@ -102,7 +103,7 @@ export function toPublicUser(user: UserRecord): PublicUser {
     id: user.id,
     email: user.email,
     displayName: user.display_name,
-    isAdmin: user.role === 'superadmin' || user.role === 'admin' || !!user.is_admin,
+    isAdmin: isAdminRole(user.role) || !!user.is_admin,
     role: role as UserRole,
     isActive: user.is_active ?? true,
     points: Number(user.points ?? 0),

@@ -4,6 +4,7 @@ import { getSettingValue, updateSetting } from "@/lib/settings/repository";
 import { getRecentRestockAuditEvents } from "@/lib/push/broadcast";
 import { generateMimiPromoCopy } from "@/lib/ai/mimi-generator";
 import { broadcastPushNotification } from "@/lib/push/broadcast";
+import { getSiteId } from "@/lib/site";
 
 export interface PromoScheduleSlot {
   id: string;
@@ -36,6 +37,25 @@ export const QUIET_HOURS_END_MINUTES = 8 * 60 + 30;  // 08:30 AM
 export const PROMO_WINDOW_START_MINUTES = 8 * 60 + 30;// 08:30 AM
 export const PROMO_WINDOW_END_MINUTES = 24 * 60;      // 00:00 (Midnight)
 export const MAX_STALE_MS = 20 * 60 * 1000;          // 20 minutes expiration
+
+/**
+ * Resolve the scheduler scope from the current deployment. An explicit scope
+ * is accepted only when it matches that trusted runtime scope, preventing a
+ * request-controlled value from selecting another tenant's schedule.
+ */
+export function resolveSchedulerSiteId(
+  requestedSiteId?: string,
+  runtimeSiteId = getSiteId(),
+): string {
+  const trustedSiteId = runtimeSiteId.trim() || "main";
+  const requested = requestedSiteId?.trim();
+
+  if (requested && requested !== trustedSiteId) {
+    throw new Error("Mimi scheduler site scope must match the current deployment");
+  }
+
+  return trustedSiteId;
+}
 
 /**
  * Returns Bangkok date and time components
@@ -97,8 +117,9 @@ export function getTargetScheduleDate(date = new Date()): string {
 /**
  * Returns distinct products found in recent restock events
  */
-export async function getDistinctRestockProducts(siteId = "main") {
-  const events = await getRecentRestockAuditEvents(siteId, 60);
+export async function getDistinctRestockProducts(siteId = getSiteId()) {
+  const trustedSiteId = resolveSchedulerSiteId(siteId);
+  const events = await getRecentRestockAuditEvents(trustedSiteId, 60);
   const seen = new Map<string, {
     productId: string;
     productName: string;
@@ -128,13 +149,15 @@ export async function getDistinctRestockProducts(siteId = "main") {
 /**
  * Reads live stock for a product from the database
  */
-export async function getLiveProductStock(productIdOrName: string, siteId = "main"): Promise<{
+export async function getLiveProductStock(productIdOrName: string, siteId = getSiteId()): Promise<{
   id: string;
   name: string;
   stock: number;
   price: string;
   isPublished: boolean;
 } | null> {
+  const trustedSiteId = resolveSchedulerSiteId(siteId);
+
   try {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT id, name, stock, price, is_published 
@@ -142,7 +165,7 @@ export async function getLiveProductStock(productIdOrName: string, siteId = "mai
        WHERE (id = ? OR type_id = ? OR name = ?) 
          AND (site_id = ? OR site_id = 'main')
        LIMIT 1`,
-      [productIdOrName, productIdOrName, productIdOrName, siteId]
+      [productIdOrName, productIdOrName, productIdOrName, trustedSiteId]
     );
 
     if (rows.length === 0) return null;
@@ -164,7 +187,8 @@ export async function getLiveProductStock(productIdOrName: string, siteId = "mai
  * Generates or retrieves the promotional schedule automatically.
  * Zero manual clicks required from admin.
  */
-export async function getDailyPromoSchedule(siteId = "main"): Promise<DailyPromoScheduleState> {
+export async function getDailyPromoSchedule(siteId = getSiteId()): Promise<DailyPromoScheduleState> {
+  const trustedSiteId = resolveSchedulerSiteId(siteId);
   const targetDateStr = getTargetScheduleDate();
   const rawState = await getSettingValue("mimi_promo_schedule_state");
   const enabledVal = await getSettingValue("mimi_promo_scheduler_enabled");
@@ -189,7 +213,12 @@ export async function getDailyPromoSchedule(siteId = "main"): Promise<DailyPromo
   }
 
   // Not generated yet or new day/night cycle: generate fresh schedule automatically!
-  return generateDailyPromoSchedule({ force: true, timesPerProduct, siteId, targetDate: targetDateStr });
+  return generateDailyPromoSchedule({
+    force: true,
+    timesPerProduct,
+    siteId: trustedSiteId,
+    targetDate: targetDateStr,
+  });
 }
 
 /**
@@ -201,7 +230,7 @@ export async function generateDailyPromoSchedule(options: {
   siteId?: string;
   targetDate?: string;
 } = {}): Promise<DailyPromoScheduleState> {
-  const siteId = options.siteId || "main";
+  const siteId = resolveSchedulerSiteId(options.siteId);
   const { minutesOfDay } = getBangkokTimeParts();
   const targetDateStr = options.targetDate || getTargetScheduleDate();
   const quota = options.timesPerProduct || 2;
@@ -289,14 +318,15 @@ export async function generateDailyPromoSchedule(options: {
  * - Queries live product stock before firing
  */
 export async function processDuePromoBroadcasts(
-  siteId = "main",
+  siteId = getSiteId(),
   options: { allowQuietHours?: boolean } = {}
 ): Promise<{
   processedCount: number;
   triggeredSlot?: PromoScheduleSlot;
   reason?: string;
 }> {
-  const schedule = await getDailyPromoSchedule(siteId);
+  const trustedSiteId = resolveSchedulerSiteId(siteId);
+  const schedule = await getDailyPromoSchedule(trustedSiteId);
 
   if (!schedule.enabled) {
     return { processedCount: 0, reason: "Mimi Autonomous Promo is disabled" };
@@ -341,7 +371,10 @@ export async function processDuePromoBroadcasts(
   }
 
   // 4. Pre-flight check: query live real-time stock
-  const liveProduct = await getLiveProductStock(dueSlot.productId || dueSlot.productName, siteId);
+  const liveProduct = await getLiveProductStock(
+    dueSlot.productId || dueSlot.productName,
+    trustedSiteId,
+  );
   const liveStock = liveProduct ? liveProduct.stock : 0;
 
   dueSlot.liveStockAtTrigger = liveStock;
@@ -372,6 +405,7 @@ export async function processDuePromoBroadcasts(
       body: copy.body,
       url: copy.url || "/products",
       target: "ALL",
+      siteId: trustedSiteId,
       senderName: "Mimi AI Auto-Pilot",
     });
 
@@ -402,17 +436,18 @@ export async function processDuePromoBroadcasts(
 /**
  * Triggers the next pending slot immediately (for manual test by admin)
  */
-export async function triggerNextPromoQueueNow(siteId = "main"): Promise<{
+export async function triggerNextPromoQueueNow(siteId = getSiteId()): Promise<{
   success: boolean;
   slot?: PromoScheduleSlot;
   message: string;
 }> {
-  const schedule = await getDailyPromoSchedule(siteId);
+  const trustedSiteId = resolveSchedulerSiteId(siteId);
+  const schedule = await getDailyPromoSchedule(trustedSiteId);
 
   let targetSlot = schedule.slots.find((s) => s.status === "pending");
 
   if (!targetSlot) {
-    const products = await getDistinctRestockProducts(siteId);
+    const products = await getDistinctRestockProducts(trustedSiteId);
     const inStock = products.find((p) => p.currentLiveStock > 0);
     if (!inStock) {
       return {
@@ -436,7 +471,7 @@ export async function triggerNextPromoQueueNow(siteId = "main"): Promise<{
   await updateSetting("mimi_promo_schedule_state", JSON.stringify(schedule));
 
   // Explicit admin test allows overriding quiet hours
-  const result = await processDuePromoBroadcasts(siteId, { allowQuietHours: true });
+  const result = await processDuePromoBroadcasts(trustedSiteId, { allowQuietHours: true });
 
   return {
     success: result.processedCount > 0 && result.triggeredSlot?.status === "sent",

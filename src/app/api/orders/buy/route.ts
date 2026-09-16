@@ -7,6 +7,7 @@ import { buyExternalProduct, fetchExternalOrderHistory } from "@/lib/products/ex
 import { recordExternalOrder } from "@/lib/orders/repository";
 import { findProductByTypeId, updateProduct } from "@/lib/products/repository";
 import { findUserById, setUserPoints } from "@/lib/auth/user";
+import { isAdminRole } from "@/lib/auth/roles";
 import { getApiProviderById } from "@/lib/api-providers/repository";
 import { getSettingValue } from "@/lib/settings/repository";
 import {
@@ -26,6 +27,11 @@ import {
   waitForStorefrontBundlePurchase,
   type StorefrontBundlePayload,
 } from "@/lib/purchases/storefront-bundle";
+import {
+  attachAppByMariCase,
+  executeAppByMariStorefrontPurchase,
+} from "@/lib/appbymari/purchase";
+import { parseAppByMariStorefrontTypeId } from "@/lib/appbymari/types";
 
 const bodySchema = z.object({
   typeId: z.string().min(1, "กรุณาระบุรหัสสินค้า"),
@@ -98,6 +104,51 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 }
     );
+  }
+
+  // AppByMari products use a namespaced type id and a dedicated transactional
+  // workflow. Their sale price is fixed per product, while the upstream API
+  // owns Master Point deduction and delivery.
+  if (parseAppByMariStorefrontTypeId(typeId)) {
+    if (purchaseOptionId || giftTypeId) {
+      return NextResponse.json(
+        { ok: false, message: "สินค้าจากร้านหลักไม่รองรับของแถมหรือแพ็กเกจเสริม" },
+        { status: 400 },
+      );
+    }
+    const idempotencyKey = request.headers.get("Idempotency-Key")?.trim() || `appbymari-${randomUUID()}`;
+    if (idempotencyKey.length > 128) {
+      return NextResponse.json(
+        { ok: false, message: "Idempotency-Key must not exceed 128 characters." },
+        { status: 400 },
+      );
+    }
+    try {
+      const result = await executeAppByMariStorefrontPurchase({
+        buyerUserId: user.id,
+        typeId,
+        quantity,
+        idempotencyKey,
+      });
+      let body = result.body as typeof result.body & { caseOrder?: unknown };
+      if (result.status === 200 && body.ok && result.orderIds?.length) {
+        const caseOrder = await attachAppByMariCase({ buyerUserId: user.id, orderIds: result.orderIds });
+        if (caseOrder) body = { ...body, caseOrder };
+        (revalidateTag as any)("products");
+        revalidatePath("/");
+        revalidatePath("/products");
+        revalidatePath("/api/products");
+      }
+      const headers: HeadersInit = { "Idempotency-Key": idempotencyKey };
+      if (result.replayed) headers["Idempotency-Replayed"] = "true";
+      if (result.status === 202) headers["Retry-After"] = "1";
+      return NextResponse.json(body, { status: result.status, headers });
+    } catch {
+      return NextResponse.json(
+        { ok: false, message: "ไม่สามารถสั่งซื้อสินค้าจากร้านหลักได้ กรุณาลองใหม่ด้วยคำขอเดิม" },
+        { status: 500, headers: { "Idempotency-Key": idempotencyKey } },
+      );
+    }
   }
 
   // Bundle purchases use their own transactional path. Legacy one-unit and
@@ -228,7 +279,7 @@ export async function POST(request: NextRequest) {
 
     const currentPoints = Math.max(0, Number(userRecord.points ?? 0));
     
-    const isAdmin = userRecord.role === 'admin' || userRecord.role === 'superadmin' || userRecord.is_admin;
+    const isAdmin = isAdminRole(userRecord.role) || userRecord.is_admin;
     
     // ใช้ราคาตาม user tier: vip ใช้ priceVip, walkin ใช้ priceWalkin, normal ใช้ price
     // ถ้าเป็น Admin ให้ใช้ราคาเว็ปหลัก (mainPrice)

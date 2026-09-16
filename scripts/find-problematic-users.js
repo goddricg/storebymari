@@ -12,7 +12,7 @@ async function main() {
   try {
     const [rows] = await connection.query(
       `SELECT id, email, role, is_admin, site_id FROM users 
-       WHERE is_admin = 1 AND (role IS NULL OR role = '' OR role NOT IN ('admin', 'superadmin'))`
+       WHERE is_admin = 1 AND (role IS NULL OR role = '' OR role NOT IN ('admin', 'superadmin', 'owner'))`
     );
     console.log("Users with is_admin = 1 and invalid/null role:", rows);
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth/server";
+import { getSiteId } from "@/lib/site";
 import { applyGlobalProfit } from "@/lib/products/repository";
 import {
   getAdminAuditRequestContext,
@@ -36,7 +37,9 @@ export async function POST(request: Request) {
   const { mode, value } = parsed.data;
 
   try {
-    const products = await applyGlobalProfit(mode, value);
+    // Site scope is derived from the server deployment, never from the
+    // request body, and is carried into every profit UPDATE predicate.
+    const products = await applyGlobalProfit(mode, value, getSiteId());
     await recordAdminAuditEvent({
       actor: me,
       action: "PRODUCT_PROFIT_BULK_UPDATE",

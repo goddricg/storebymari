@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { isPushSupported, subscribeToPush } from "@/lib/push/client";
 import { triggerHaptic } from "@/lib/ui/haptics";
 import { playNotificationSound } from "@/lib/audio/notification-sounds";
+import { SITE_BRAND_PWA_ICON_192_PATH } from "@/lib/site-branding";
 
 const DISMISSED_STORAGE_KEY = "mimi_push_prompt_dismissed_until";
 const DISMISS_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
@@ -117,7 +118,7 @@ export function MimiNotificationPrompt() {
           <div className="relative flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#ff7a00] to-[var(--theme-color)] p-0.5 shadow-md shadow-[var(--theme-color)]/20">
             <div className="relative size-full rounded-[14px] overflow-hidden bg-[#170f1d] flex items-center justify-center">
               <Image
-                src="/icon-192x192.png"
+                src={SITE_BRAND_PWA_ICON_192_PATH}
                 alt="Mimi AI"
                 width={44}
                 height={44}

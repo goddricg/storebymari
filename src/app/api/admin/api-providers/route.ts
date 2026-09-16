@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireSuperAdmin } from "@/lib/auth/server";
+import { getCurrentUser } from "@/lib/auth/server";
+import {
+  canReadApiProviderMetadata,
+  canManageGlobalApiProvider,
+} from "@/lib/auth/access-policies";
+import { getSiteId } from "@/lib/site";
 import {
   getAllApiProviders,
   createApiProvider,
@@ -8,7 +13,11 @@ import {
   deleteApiProvider,
   getApiProviderById,
 } from "@/lib/api-providers/repository";
-import type { CreateApiProviderInput, UpdateApiProviderInput } from "@/lib/api-providers/types";
+import type {
+  CreateApiProviderInput,
+  UpdateApiProviderInput,
+} from "@/lib/api-providers/types";
+import { toSafeApiProvider } from "@/lib/api-providers/presentation";
 import { sendAdminAuditWebhook } from "@/lib/discord/admin-audit";
 import {
   getAdminAuditRequestContext,
@@ -36,29 +45,61 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+function noStoreJson(body: unknown, status = 200) {
+  const response = NextResponse.json(body, { status });
+  response.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  return response;
+}
+
+async function authorizeProviderRead() {
+  const me = await getCurrentUser();
+  if (!me) {
+    return { user: null, response: noStoreJson({ message: "Unauthorized" }, 401) };
+  }
+  if (!canReadApiProviderMetadata(getSiteId(), me)) {
+    return { user: null, response: noStoreJson({ message: "Forbidden" }, 403) };
+  }
+  return { user: me, response: null };
+}
+
+async function authorizeGlobalProviderManagement() {
+  const me = await getCurrentUser();
+  if (!me) {
+    return { user: null, response: noStoreJson({ message: "Unauthorized" }, 401) };
+  }
+  if (!canManageGlobalApiProvider(getSiteId(), me)) {
+    return { user: null, response: noStoreJson({ message: "Forbidden" }, 403) };
+  }
+  return { user: me, response: null };
+}
+
 export async function GET() {
   try {
-    await requireSuperAdmin();
+    const authorization = await authorizeProviderRead();
+    if (authorization.response) return authorization.response;
+
     const providers = await getAllApiProviders();
-    return NextResponse.json({ providers });
+    return noStoreJson({ providers: providers.map(toSafeApiProvider) });
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : "ไม่สามารถดึงข้อมูล API providers ได้";
-    return NextResponse.json({ message }, { status: 500 });
+    return noStoreJson({ message }, 500);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const me = await requireSuperAdmin();
+    const authorization = await authorizeGlobalProviderManagement();
+    if (authorization.response) return authorization.response;
+    const me = authorization.user!;
 
     const contentType = request.headers.get("content-type") ?? "";
     if (!contentType.includes("application/json")) {
-      return NextResponse.json(
+      return noStoreJson(
         { message: "รูปแบบข้อมูลไม่ถูกต้อง" },
-        { status: 415 }
+        415,
       );
     }
 
@@ -66,12 +107,12 @@ export async function POST(request: NextRequest) {
     const parsed = createSchema.safeParse(rawBody);
 
     if (!parsed.success) {
-      return NextResponse.json(
+      return noStoreJson(
         {
           message: "ข้อมูลไม่ถูกต้อง",
           errors: parsed.error.flatten(),
         },
-        { status: 400 }
+        400,
       );
     }
 
@@ -103,25 +144,27 @@ export async function POST(request: NextRequest) {
       details: `Endpoint: ${provider.apiEndpoint}`,
     });
 
-    return NextResponse.json({ provider }, { status: 201 });
+    return noStoreJson({ provider: toSafeApiProvider(provider) }, 201);
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : "ไม่สามารถสร้าง API provider ได้";
-    return NextResponse.json({ message }, { status: 500 });
+    return noStoreJson({ message }, 500);
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const me = await requireSuperAdmin();
+    const authorization = await authorizeGlobalProviderManagement();
+    if (authorization.response) return authorization.response;
+    const me = authorization.user!;
 
     const contentType = request.headers.get("content-type") ?? "";
     if (!contentType.includes("application/json")) {
-      return NextResponse.json(
+      return noStoreJson(
         { message: "รูปแบบข้อมูลไม่ถูกต้อง" },
-        { status: 415 }
+        415,
       );
     }
 
@@ -129,20 +172,20 @@ export async function PATCH(request: NextRequest) {
     const { id, ...updateData } = rawBody;
 
     if (!id || typeof id !== "string") {
-      return NextResponse.json(
+      return noStoreJson(
         { message: "กรุณาระบุ ID ของ API provider" },
-        { status: 400 }
+        400,
       );
     }
 
     const parsed = updateSchema.safeParse(updateData);
     if (!parsed.success) {
-      return NextResponse.json(
+      return noStoreJson(
         {
           message: "ข้อมูลไม่ถูกต้อง",
           errors: parsed.error.flatten(),
         },
-        { status: 400 }
+        400,
       );
     }
 
@@ -191,27 +234,29 @@ export async function PATCH(request: NextRequest) {
       changes: Object.keys(changes).length > 0 ? changes : undefined,
     });
 
-    return NextResponse.json({ provider });
+    return noStoreJson({ provider: toSafeApiProvider(provider) });
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : "ไม่สามารถอัปเดต API provider ได้";
-    return NextResponse.json({ message }, { status: 500 });
+    return noStoreJson({ message }, 500);
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const me = await requireSuperAdmin();
+    const authorization = await authorizeGlobalProviderManagement();
+    if (authorization.response) return authorization.response;
+    const me = authorization.user!;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
+      return noStoreJson(
         { message: "กรุณาระบุ ID ของ API provider" },
-        { status: 400 }
+        400,
       );
     }
 
@@ -246,13 +291,13 @@ export async function DELETE(request: NextRequest) {
       target: `Provider ID: ${id}${provider?.displayName ? ` (${provider.displayName})` : ""}`,
     });
 
-    return NextResponse.json({ message: "ลบ API provider สำเร็จ" });
+    return noStoreJson({ message: "ลบ API provider สำเร็จ" });
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : "ไม่สามารถลบ API provider ได้";
-    return NextResponse.json({ message }, { status: 500 });
+    return noStoreJson({ message }, 500);
   }
 }
 

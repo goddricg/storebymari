@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { RowDataPacket } from "mysql2/promise";
 import { validateApiKey } from "@/lib/auth/api-key";
+import { isAdminRole } from "@/lib/auth/roles";
 import pool from "@/lib/mysql";
 import { getEffectiveStockFromRecord } from "@/lib/products/stock-utils";
 import { getSiteId } from "@/lib/site";
@@ -100,11 +101,7 @@ export async function GET(request: Request) {
     );
     const user = userRows[0];
     const isAdmin = Boolean(
-      user &&
-        (user.role === "admin" ||
-          user.role === "superadmin" ||
-          user.is_admin === 1 ||
-          user.is_admin === true)
+      user && (isAdminRole(user.role) || user.is_admin === 1 || user.is_admin === true)
     );
     const userTier = getEffectiveUserTier(user?.user_tier || "normal", user?.tier_expires_at);
 

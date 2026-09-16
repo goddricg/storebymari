@@ -1,6 +1,5 @@
 'use client';
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -41,6 +40,7 @@ import { usePublicSettings } from "@/components/public-settings-provider";
 import { DreamyOrnament } from "@/components/dreamy-ui/ornaments";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { clearAppBadge } from "@/lib/ui/badging";
+import { getSiteId } from "@/lib/site";
 import { usePwaInstall } from "@/components/pwa/pwa-install-provider";
 import {
   PwaInstallDropdownMenuItem,
@@ -73,8 +73,13 @@ function MobileRadialMenu({
   onClose: () => void;
 }) {
   const itemTop = currentUser ? 118 : 76;
+  const [isMounted, setIsMounted] = useState(false);
 
-  if (typeof document === "undefined") return null;
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted || typeof document === "undefined") return null;
 
   return createPortal(
     <AnimatePresence initial={false}>
@@ -214,7 +219,7 @@ function MobileRadialMenu({
 }
 
 export default function NavigationBar() {
-  const isMainSite = process.env.NEXT_PUBLIC_SITE_ID === "main";
+  const isMainSite = getSiteId() === "main";
   const pathname = usePathname();
   const visibleNavLinks = pathname === "/cart" ? NAV_LINKS.filter((link) => link.href !== "/") : NAV_LINKS;
   const router = useRouter();
@@ -363,35 +368,7 @@ export default function NavigationBar() {
             aria-label={`${settings.site_name || "Home"}`}
           >
             <LogoImage />
-            {isDreamyPublicPage ? (
-              <motion.span
-                initial={{ opacity: 0, y: 4, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.45, ease: "easeOut" }}
-                className="block min-w-0"
-              >
-                <Image
-                  src="/ui/appbymari-dreamy/app-by-mari-wordmark.png"
-                  alt="App By Mari"
-                  width={1667}
-                  height={323}
-                  priority
-                  unoptimized
-                  sizes="(max-width: 480px) 150px, (max-width: 1024px) 220px, 300px"
-                  className="dreamy-brand-wordmark dreamy-brand-wordmark-default h-8 w-auto object-contain sm:h-11 lg:h-[52px]"
-                />
-                <Image
-                  src="/ui/appbymari-halloween/wordmark-night-orange.png"
-                  alt="App By Mari Halloween Night"
-                  width={2158}
-                  height={729}
-                  priority
-                  unoptimized
-                  sizes="(max-width: 480px) 150px, (max-width: 1024px) 220px, 300px"
-                  className="dreamy-brand-wordmark dreamy-brand-wordmark-halloween-night h-8 w-auto object-contain sm:h-11 lg:h-[52px]"
-                />
-              </motion.span>
-            ) : settings.site_name ? (
+            {!isDreamyPublicPage && settings.site_name ? (
               <span className="text-lg font-bold text-[var(--theme-color)] hidden sm:block">
                 {settings.site_name}
               </span>

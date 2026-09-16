@@ -1,17 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSettingValue, getSettingValues } from "@/lib/settings/repository";
+import { isSafePublicSettingKey } from "@/lib/settings/public-api";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
+function noStoreJson(body: unknown, status = 200) {
+  const response = NextResponse.json(body, { status });
+  response.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  return response;
+}
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const keys = searchParams.get("keys");
+  const { searchParams } = new URL(request.url);
+  const keysParam = searchParams.get("keys");
+  const requestedKeys =
+    keysParam === null || keysParam.trim() === ""
+      ? null
+      : [...new Set(keysParam.split(",").map((key) => key.trim()).filter(Boolean))];
 
-    if (keys) {
-      const keyList = keys.split(",").map((k) => k.trim()).filter(Boolean);
-      const result = await getSettingValues(keyList);
-      return NextResponse.json(result);
+  if (requestedKeys !== null) {
+    const hasUnsafeKey = requestedKeys.some((key) => !isSafePublicSettingKey(key));
+    if (hasUnsafeKey) {
+      return noStoreJson({ message: "ขอได้เฉพาะ setting ที่เปิดเผยต่อสาธารณะเท่านั้น" }, 400);
+    }
+  }
+
+  try {
+    if (requestedKeys !== null) {
+      const result = await getSettingValues(requestedKeys);
+      return noStoreJson(result);
     }
 
     const [bankAccountNumber, bankAccountName, bankName, minimumAmount] = await Promise.all([
@@ -21,27 +39,24 @@ export async function GET(request: NextRequest) {
       getSettingValue("minimum_topup_amount"),
     ]);
 
-    return NextResponse.json({
+    return noStoreJson({
       bankAccount: {
         number: bankAccountNumber || null,
         name: bankAccountName || null,
         bank: bankName || null,
       },
-      minimumAmount: minimumAmount ? parseFloat(minimumAmount) : 49,
+      minimumAmount: minimumAmount ? parseFloat(minimumAmount) || 49 : 49,
     });
   } catch (error) {
     console.error("Error fetching public settings:", error);
-    const { searchParams } = new URL(request.url);
-    const keys = searchParams.get("keys");
-    if (keys) {
-      const keyList = keys.split(",").map((k) => k.trim());
+    if (requestedKeys !== null) {
       const result: Record<string, string | null> = {};
-      for (const key of keyList) {
+      for (const key of requestedKeys) {
         result[key] = null;
       }
-      return NextResponse.json(result, { status: 200 });
+      return noStoreJson(result);
     }
-    return NextResponse.json(
+    return noStoreJson(
       {
         bankAccount: {
           number: null,
@@ -50,7 +65,6 @@ export async function GET(request: NextRequest) {
         },
         minimumAmount: 49,
       },
-      { status: 200 }
     );
   }
 }

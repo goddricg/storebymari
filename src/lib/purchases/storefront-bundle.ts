@@ -3,6 +3,7 @@ import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/prom
 
 import pool from "@/lib/mysql";
 import type { PublicUser } from "@/lib/auth/user";
+import { isAdminRole } from "@/lib/auth/roles";
 import { getPriceByTier } from "@/lib/utils/pricing";
 import { getEffectiveUserTier } from "@/lib/auth/tier";
 import { getSiteId } from "@/lib/site";
@@ -181,8 +182,7 @@ function accountDetails(account: StockAccount): string | null {
 
 function isAdmin(user: LockedUserRow): boolean {
   return (
-    user.role === "admin" ||
-    user.role === "superadmin" ||
+    isAdminRole(user.role) ||
     user.is_admin === 1 ||
     user.is_admin === true
   );

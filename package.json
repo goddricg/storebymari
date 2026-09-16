@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "promote:production-owner": "node scripts/promote-production-owner.mjs",
+    "provision:production-login": "node scripts/provision-production-login.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -15,6 +17,7 @@
     "migrate:topup-receipts": "node scripts/migrate-topup-receipts.js",
     "migrate:purchase-cases": "node scripts/migrate-purchase-cases.js",
     "migrate:support-case-notifications": "node scripts/migrate-support-case-notifications.js",
+    "migrate:appbymari": "node scripts/migrate-appbymari.js",
     "backfill:purchase-cases": "tsx scripts/backfill-purchase-cases.ts",
     "backfill:topup-receipts": "tsx scripts/backfill-topup-receipts.ts",
     "sanitize:realtime-products": "tsx scripts/sanitize-realtime-products.ts"

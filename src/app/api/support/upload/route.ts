@@ -11,6 +11,7 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/jpg",
   "image/webp",
 ]);
+type RequestFormData = { get(name: string): string | File | null };
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await req.formData();
+    const formData = await req.formData() as unknown as RequestFormData;
     const file = formData.get("file") as File | null;
     if (!file) {
       return NextResponse.json({ message: "กรุณาเลือกไฟล์รูปภาพ" }, { status: 400 });

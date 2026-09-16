@@ -18,7 +18,14 @@ import {
 } from "@/lib/theme/catalog";
 import { OrganizationJsonLd, WebSiteJsonLd, FAQJsonLd, ItemListJsonLd } from "@/components/seo/json-ld";
 import { MAIN_SITE_BROWSER_TITLE, getSiteConfig } from "@/lib/site-config";
-import { SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
+import {
+  resolveSiteBrandLogo,
+  SITE_BRAND_LOGO_ALT,
+  SITE_BRAND_LOGO_HEIGHT,
+  SITE_BRAND_LOGO_WIDTH,
+  SITE_BRAND_PWA_ICON_192_PATH,
+  SITE_BRAND_PWA_ICON_512_PATH,
+} from "@/lib/site-branding";
 import { PwaInstallProvider } from "@/components/pwa/pwa-install-provider";
 import { PwaNotificationPermissionGate } from "@/components/pwa/pwa-notification-permission-gate";
 import { PushAutoSync } from "@/components/push/push-auto-sync";
@@ -44,16 +51,17 @@ const mali = Mali({
 export async function generateMetadata(): Promise<Metadata> {
   const { siteName: defaultSiteName, siteUrl, isChildSite } = getSiteConfig();
   const publicSettings = await loadLayoutPublicSettings();
-  const siteTitle = isChildSite
-    ? publicSettings.site_title || `${defaultSiteName} | ขายแอพพรีเมียมราคาถูก Netflix, Spotify, YouTube แท้`
-    : MAIN_SITE_BROWSER_TITLE;
+  const siteName = publicSettings.site_name?.trim() || defaultSiteName;
+  const siteTitle = publicSettings.site_title?.trim() || (isChildSite
+    ? `${siteName} | ขายแอพพรีเมียมราคาถูก Netflix, Spotify, YouTube แท้`
+    : MAIN_SITE_BROWSER_TITLE);
   const shortTitle = siteTitle.split('|')[0].trim();
 
-  const siteDescription = `${defaultSiteName} ศูนย์รวมบัญชีพรีเมียมแท้ ราคาถูก ปลอดภัย พร้อมรับประกัน ใช้งานได้จริง ทั้ง Netflix Ultra HD, Spotify Premium, YouTube Premium, Disney+, Prime Video, HBO GO, VIU, WeTV และอีกมากมาย แชร์ Netflix หาร Netflix แบบไม่โดนแบน บริการรวดเร็ว ตอบไว ดูแลหลังขาย 24 ชม.`;
+  const siteDescription = `${siteName} ศูนย์รวมบัญชีพรีเมียมแท้ ราคาถูก ปลอดภัย พร้อมรับประกัน ใช้งานได้จริง ทั้ง Netflix Ultra HD, Spotify Premium, YouTube Premium, Disney+, Prime Video, HBO GO, VIU, WeTV และอีกมากมาย แชร์ Netflix หาร Netflix แบบไม่โดนแบน บริการรวดเร็ว ตอบไว ดูแลหลังขาย 24 ชม.`;
 
-  const siteLogo =
-    publicSettings.site_logo_url?.trim() ||
-    (!isChildSite ? SITE_BRAND_LOGO_PATH : undefined);
+  const siteLogo = isChildSite
+    ? publicSettings.site_logo_url?.trim() || undefined
+    : resolveSiteBrandLogo(publicSettings.site_logo_url);
 
   return {
     metadataBase: new URL(siteUrl),
@@ -64,7 +72,7 @@ export async function generateMetadata(): Promise<Metadata> {
   description: siteDescription,
   keywords: [
     // Main keywords
-    defaultSiteName,
+    siteName,
     "ขายแอพพรีเมียม",
     "เช่าแอพพรีเมียมราคาถูก",
     "บัญชีพรีเมียมแท้ ราคาถูก ปลอดภัย",
@@ -145,9 +153,9 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [
         {
           url: siteLogo,
-          width: 1536,
-          height: 1024,
-          alt: `${shortTitle} Premium App Service Thailand`,
+          width: SITE_BRAND_LOGO_WIDTH,
+          height: SITE_BRAND_LOGO_HEIGHT,
+          alt: SITE_BRAND_LOGO_ALT,
         },
       ],
     }),
@@ -171,12 +179,12 @@ export async function generateMetadata(): Promise<Metadata> {
   },
   icons: {
     icon: [
-      { url: "/pwa-app-icon-192.png?v=20260909", sizes: "192x192", type: "image/png" },
-      { url: "/pwa-app-icon-512.png?v=20260909", sizes: "512x512", type: "image/png" },
+      { url: SITE_BRAND_PWA_ICON_192_PATH, sizes: "192x192", type: "image/png" },
+      { url: SITE_BRAND_PWA_ICON_512_PATH, sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/apple-touch-icon.png?v=20260909", sizes: "180x180", type: "image/png" },
-      { url: "/pwa-app-icon-192.png?v=20260909", sizes: "192x192", type: "image/png" },
+      { url: "/apple-touch-icon.png?v=20260916", sizes: "180x180", type: "image/png" },
+      { url: SITE_BRAND_PWA_ICON_192_PATH, sizes: "192x192", type: "image/png" },
     ],
   },
   other: {
@@ -263,7 +271,7 @@ export default async function RootLayout({
         <meta name="theme-color" content="#170f1d" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260909" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260916" />
       </head>
       <body 
         data-site-id={siteId}
@@ -293,6 +301,7 @@ export default async function RootLayout({
         <PopupAnnouncementModal />
         <NavigationBar />
         {children}
+        <AdminContactIcon />
         <BottomNavigation />
         <Toaster
           position="top-center"

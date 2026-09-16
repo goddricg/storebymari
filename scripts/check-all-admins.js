@@ -9,7 +9,7 @@ async function main() {
     port: 3306
   });
 
-  const [rows] = await connection.query("SELECT id, email, role, is_admin, site_id FROM users WHERE is_admin = 1 OR role IN ('admin', 'superadmin')");
+  const [rows] = await connection.query("SELECT id, email, role, is_admin, site_id FROM users WHERE is_admin = 1 OR role IN ('admin', 'superadmin', 'owner')");
   console.log("All Admins/SuperAdmins:", rows);
   
   process.exit(0);

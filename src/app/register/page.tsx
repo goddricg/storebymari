@@ -7,11 +7,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import RegisterForm from "@/components/auth/register-form";
 import { getSettingValue } from "@/lib/settings/repository";
 import { getSiteConfig } from "@/lib/site-config";
+import { loadLayoutPublicSettings } from "@/lib/settings/load-layout-public-settings";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { siteName } = getSiteConfig();
+  const publicSettings = await loadLayoutPublicSettings();
+  const configuredTitle = publicSettings.site_title?.trim();
   return {
-    title: "สมัครสมาชิก",
+    title: configuredTitle ? { absolute: configuredTitle } : "สมัครสมาชิก",
     description: `สร้างบัญชีใหม่เพื่อเริ่มเช่าและแชร์แอปพรีเมี่ยมกับ ${siteName}`,
   };
 }

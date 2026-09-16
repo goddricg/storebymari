@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight, Plus, Trash2, Key, Copy, Check, Eye, EyeOff, Settings2, ShieldBan, CalendarClock, Save } from 'lucide-react'
 import { useSession, refreshSessionCache } from '@/lib/auth/use-session'
+import { isAdminRole, isSuperAdminUser } from '@/lib/auth/roles'
 import {
   Dialog,
   DialogClose,
@@ -31,7 +32,7 @@ type UserRow = {
   email: string
   display_name: string | null
   is_admin: boolean
-  role?: 'user' | 'admin' | 'superadmin'
+  role?: 'user' | 'admin' | 'superadmin' | 'owner'
   is_active: boolean
   created_at: string
   points: number
@@ -44,7 +45,7 @@ type UserRow = {
 }
 
 type ManagementDraft = {
-  role: 'user' | 'admin' | 'superadmin'
+  role: 'user' | 'admin' | 'superadmin' | 'owner'
   isActive: boolean
   isBanned: boolean
   userTier: 'normal' | 'vip' | 'walkin'
@@ -61,7 +62,7 @@ function toDateTimeLocal(value: string | null | undefined) {
 
 export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
   const { user: sessionUser } = useSession()
-  const isSuperAdmin = sessionUser?.role === 'superadmin' || (sessionUser?.isAdmin && !sessionUser?.role)
+  const isSuperAdmin = isSuperAdminUser(sessionUser)
 
   const [users, setUsers] = useState<UserRow[]>([])
   const [isPending, startTransition] = useTransition()
@@ -90,7 +91,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
     email: '',
     password: '',
     displayName: '',
-    role: 'user' as 'user' | 'admin' | 'superadmin',
+    role: 'user' as 'user' | 'admin' | 'superadmin' | 'owner',
     userTier: 'normal' as 'normal' | 'vip' | 'walkin',
     points: '0',
     isActive: true,
@@ -151,7 +152,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
     return () => clearTimeout(timer)
   }, [query])
 
-  const updateRole = (user: UserRow, newRole: 'user' | 'admin' | 'superadmin') => {
+  const updateRole = (user: UserRow, newRole: 'user' | 'admin' | 'superadmin' | 'owner') => {
     startTransition(async () => {
       const res = await fetch('/api/admin/users', {
         method: 'PATCH',
@@ -277,7 +278,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
   }
 
   const managementCannotEdit = managementDialogUser
-    ? !isSuperAdmin && (managementDialogUser.role === 'admin' || managementDialogUser.role === 'superadmin' || managementDialogUser.is_admin)
+    ? !isSuperAdmin && (isAdminRole(managementDialogUser.role) || managementDialogUser.is_admin)
     : false
 
   const openPointsDialog = (user: UserRow) => {
@@ -590,7 +591,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
         </thead>
         <tbody>
           {users.map((u) => {
-            const isTargetAdmin = u.role === 'admin' || u.role === 'superadmin' || u.is_admin
+            const isTargetAdmin = isAdminRole(u.role) || u.is_admin
             const cannotEdit = !isSuperAdmin && isTargetAdmin
 
             return (
@@ -600,7 +601,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                 <td className="py-2 pr-2">
                   <Select
                     value={u.role || (u.is_admin ? 'superadmin' : 'user')}
-                    onValueChange={(value) => updateRole(u, value as 'user' | 'admin' | 'superadmin')}
+                    onValueChange={(value) => updateRole(u, value as 'user' | 'admin' | 'superadmin' | 'owner')}
                     disabled={isPending || cannotEdit}
                   >
                     <SelectTrigger className="w-[110px] h-8 text-xs">
@@ -610,6 +611,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                      {isSuperAdmin && <SelectItem value="owner">Owner</SelectItem>}
                     </SelectContent>
                   </Select>
                 </td>
@@ -647,7 +649,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                         u.sites.map(site => (
                           <div key={site.id} className="flex flex-col items-center gap-1 border-b border-zinc-100 last:border-0 pb-1 last:pb-0">
                             <Badge variant="outline" className="text-[10px] whitespace-nowrap bg-zinc-50">{site.site_id}</Badge>
-                            {u.role === 'admin' || u.role === 'superadmin' || u.is_admin ? (
+                            {isAdminRole(u.role) || u.is_admin ? (
                               <div className="flex items-center gap-1">
                                 <Switch
                                   checked={site.is_api_enabled}
@@ -664,7 +666,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                       ) : (
                         <div className="flex flex-col items-center gap-1">
                           <Badge variant="outline" className="text-[10px] whitespace-nowrap bg-zinc-50">{u.site_id}</Badge>
-                          {u.site_id === 'main' && (u.role === 'admin' || u.role === 'superadmin' || u.is_admin) ? (
+                          {u.site_id === 'main' && (isAdminRole(u.role) || u.is_admin) ? (
                             <div className="flex items-center gap-1">
                               <Switch
                                 checked={u.is_api_enabled}
@@ -722,7 +724,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
         <p className="py-6 text-center text-sm text-[#9a5832]">ไม่พบผู้ใช้</p>
       ) : (
         users.map((u) => {
-          const isTargetAdmin = u.role === 'admin' || u.role === 'superadmin' || u.is_admin
+          const isTargetAdmin = isAdminRole(u.role) || u.is_admin
           const cannotEdit = !isSuperAdmin && isTargetAdmin
 
           return (
@@ -748,7 +750,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                   <span className="text-[#6B7280] block font-medium">บทบาท</span>
                   <Select
                     value={u.role || (u.is_admin ? 'superadmin' : 'user')}
-                    onValueChange={(value) => updateRole(u, value as 'user' | 'admin' | 'superadmin')}
+                    onValueChange={(value) => updateRole(u, value as 'user' | 'admin' | 'superadmin' | 'owner')}
                     disabled={isPending || cannotEdit}
                   >
                     <SelectTrigger className="w-full h-8 text-xs bg-white border-[#E5E7EB]">
@@ -758,6 +760,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                      {isSuperAdmin && <SelectItem value="owner">Owner</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
@@ -791,7 +794,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                       u.sites.map(site => (
                         <div key={site.id} className="flex items-center justify-between bg-white border border-[#E5E7EB] rounded-md px-2 py-1">
                           <Badge variant="outline" className="text-[10px] bg-zinc-50">{site.site_id}</Badge>
-                          {u.role === 'admin' || u.role === 'superadmin' || u.is_admin ? (
+                          {isAdminRole(u.role) || u.is_admin ? (
                             <Switch
                               checked={site.is_api_enabled}
                               onCheckedChange={(checked) => {
@@ -806,7 +809,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                     ) : (
                       <div className="flex items-center justify-between bg-white border border-[#E5E7EB] rounded-md px-2 py-1 col-span-2">
                         <Badge variant="outline" className="text-[10px] bg-zinc-50">{u.site_id}</Badge>
-                        {u.site_id === 'main' && (u.role === 'admin' || u.role === 'superadmin' || u.is_admin) ? (
+                        {u.site_id === 'main' && (isAdminRole(u.role) || u.is_admin) ? (
                           <Switch
                             checked={u.is_api_enabled}
                             onCheckedChange={(checked) => updateApiStatus(u, checked)}
@@ -1075,6 +1078,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                         <SelectItem value="user">User</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                         {isSuperAdmin ? <SelectItem value="superadmin">Super Admin</SelectItem> : null}
+                        {isSuperAdmin ? <SelectItem value="owner">Owner</SelectItem> : null}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1295,7 +1299,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                 <Select
                   value={newUserData.role}
                   onValueChange={(value) =>
-                    setNewUserData({ ...newUserData, role: value as 'user' | 'admin' | 'superadmin' })
+                    setNewUserData({ ...newUserData, role: value as 'user' | 'admin' | 'superadmin' | 'owner' })
                   }
                   disabled={isPending}
                 >
@@ -1306,6 +1310,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                     <SelectItem value="user">User</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                     {isSuperAdmin && <SelectItem value="superadmin">Super Admin</SelectItem>}
+                    {isSuperAdmin && <SelectItem value="owner">Owner</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>

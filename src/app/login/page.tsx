@@ -7,11 +7,14 @@ import LoginForm from "@/components/auth/login-form";
 
 import { getSiteConfig } from "@/lib/site-config";
 import { getSettingValue } from "@/lib/settings/repository";
+import { loadLayoutPublicSettings } from "@/lib/settings/load-layout-public-settings";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { siteName } = getSiteConfig();
+  const publicSettings = await loadLayoutPublicSettings();
+  const configuredTitle = publicSettings.site_title?.trim();
   return {
-    title: `เข้าสู่ระบบ | ${siteName}`,
+    title: configuredTitle ? { absolute: configuredTitle } : `เข้าสู่ระบบ | ${siteName}`,
     description: "เข้าสู่ระบบเพื่อจัดการบัญชีเช่าแอปพรีเมี่ยมของคุณ",
   };
 }

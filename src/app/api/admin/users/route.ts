@@ -15,18 +15,24 @@ import { getSiteId } from "@/lib/site";
 import { getEffectiveUserTier, toOptionalIsoDate } from "@/lib/auth/tier";
 import {
   canAssignSuperAdminRole,
+  isAdminRole,
+  isSuperAdminRole,
   isSuperAdminManagementOperator,
 } from "@/lib/auth/roles";
 import {
   insertManualTopupHistory,
   shouldRecordManualTopupHistory,
 } from "@/lib/topup/repository";
+import {
+  buildUserTargetScope,
+  toAdminCreatedUser,
+} from "@/lib/admin/user-scope";
 
 const updateSchema = z.object({
   id: z.string(),
   displayName: z.string().min(1).max(64).optional(),
   isAdmin: z.boolean().optional(),
-  role: z.enum(['user', 'admin', 'superadmin']).optional(),
+  role: z.enum(['user', 'admin', 'superadmin', 'owner']).optional(),
   isActive: z.boolean().optional(),
   points: z.number().min(0).optional(),
   pointsDelta: z.number().optional(),
@@ -75,12 +81,6 @@ type UserDbRow = RowDataPacket & {
 };
 
 type CountRow = RowDataPacket & { count: number | string };
-
-type PointRow = RowDataPacket & {
-  id: string;
-  site_id: string | null;
-  points: number | string | null;
-};
 
 type UserSite = NonNullable<UserDoc["sites"]>[number];
 
@@ -133,7 +133,7 @@ function toUserDoc(row: UserDbRow): UserDoc {
 export async function GET(request: Request) {
   try {
     const me = await getCurrentUser();
-    const isAuthorized = me?.role === 'superadmin' || me?.role === 'admin' || !!me?.isAdmin;
+    const isAuthorized = isAdminRole(me?.role) || !!me?.isAdmin;
     if (!me || !isAuthorized) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
@@ -161,7 +161,7 @@ export async function GET(request: Request) {
     let dataQuery = `SELECT * FROM users WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
 
     if (siteId === 'main') {
-      countQuery = `SELECT COUNT(DISTINCT CASE WHEN role IN ('admin', 'superadmin') OR is_admin = 1 THEN email ELSE id END) as count FROM users WHERE ${whereClause}`;
+      countQuery = `SELECT COUNT(DISTINCT CASE WHEN role IN ('admin', 'superadmin', 'owner') OR is_admin = 1 THEN email ELSE id END) as count FROM users WHERE ${whereClause}`;
       dataQuery = `
         SELECT 
           MIN(id) as id,
@@ -180,7 +180,7 @@ export async function GET(request: Request) {
           MIN(created_at) as created_at
         FROM users 
         WHERE ${whereClause}
-        GROUP BY email, CASE WHEN role IN ('admin', 'superadmin') OR is_admin = 1 THEN 1 ELSE id END
+        GROUP BY email, CASE WHEN role IN ('admin', 'superadmin', 'owner') OR is_admin = 1 THEN 1 ELSE id END
         ORDER BY MAX(created_at) DESC LIMIT ? OFFSET ?
       `;
     }
@@ -238,10 +238,10 @@ export async function PATCH(request: Request) {
       isApiEnabled,
     } = parsed.data;
 
-    // ตรวจสอบเบื้องต้น: ห้ามพนักงาน (admin) ตั้งซูเปอร์แอดมิน
+    // ตรวจสอบเบื้องต้น: ห้ามพนักงาน (admin) ตั้ง Super Admin หรือ Owner
     if (!isSuperAdminOperator) {
-      if (role !== undefined && role === 'superadmin') {
-        return NextResponse.json({ message: "พนักงานไม่สามารถตั้งซูเปอร์แอดมินได้" }, { status: 403 });
+      if (role !== undefined && isSuperAdminRole(role)) {
+        return NextResponse.json({ message: "พนักงานไม่สามารถตั้งซูเปอร์แอดมินหรือ Owner ได้" }, { status: 403 });
       }
     }
     
@@ -250,15 +250,13 @@ export async function PATCH(request: Request) {
       await connection.beginTransaction();
 
       const siteId = getSiteId();
-      let selectQuery = "SELECT * FROM users WHERE id = ? AND site_id = ? LIMIT 1 FOR UPDATE";
-      let selectParams = [id, siteId];
-      if (siteId === 'main') {
-        selectQuery = "SELECT * FROM users WHERE id = ? LIMIT 1 FOR UPDATE";
-        selectParams = [id];
-      }
+      const targetScope = buildUserTargetScope(siteId, id);
+      const selectQuery = `SELECT * FROM users WHERE ${targetScope.whereClause} LIMIT 1 FOR UPDATE`;
+      const selectParams = targetScope.params;
       const [existingRows] = await connection.execute(selectQuery, selectParams);
       const list = existingRows as UserDbRow[];
       if (list.length === 0) {
+        await connection.rollback();
         return NextResponse.json({ message: "ไม่พบผู้ใช้" }, { status: 404 });
       }
 
@@ -267,16 +265,18 @@ export async function PATCH(request: Request) {
       // อนุญาตบัญชีหลัก หรือ Owner ใน Local Demo ตามนโยบายแยกสภาพแวดล้อม
       const targetRole = role !== undefined ? role : currentUser.role;
       const targetIsAdmin = isAdmin !== undefined ? isAdmin : currentUser.is_admin;
-      if (targetRole === 'superadmin' || (targetIsAdmin && !targetRole)) {
+      if (isSuperAdminRole(targetRole) || (targetIsAdmin && !targetRole)) {
         if (!canAssignSuperAdminRole(currentUser.email)) {
-          return NextResponse.json({ message: "บัญชีนี้ไม่ได้อยู่ใน PRIMARY_SUPER_ADMIN_EMAIL จึงตั้งเป็น Super Admin ไม่ได้" }, { status: 403 });
+          await connection.rollback();
+          return NextResponse.json({ message: "บัญชีนี้ไม่ได้อยู่ใน PRIMARY_SUPER_ADMIN_EMAIL จึงตั้งเป็น Super Admin/Owner ไม่ได้" }, { status: 403 });
         }
       }
 
-      // ห้ามพนักงาน (admin) แก้ไขข้อมูลผู้ดูแลระบบท่านอื่น (admin หรือ superadmin)
+      // ห้ามพนักงาน (admin) แก้ไขข้อมูลผู้ดูแลระบบท่านอื่น (admin, superadmin หรือ owner)
       if (!isSuperAdminOperator) {
-        const isTargetAdmin = currentUser.role === 'admin' || currentUser.role === 'superadmin' || currentUser.is_admin === 1;
+        const isTargetAdmin = isAdminRole(currentUser.role) || currentUser.is_admin === 1 || currentUser.is_admin === true;
         if (isTargetAdmin) {
+          await connection.rollback();
           return NextResponse.json({ message: "พนักงานไม่สามารถแก้ไขข้อมูลของผู้ดูแลระบบท่านอื่นได้" }, { status: 403 });
         }
       }
@@ -297,23 +297,24 @@ export async function PATCH(request: Request) {
       const finalIsApiEnabled = isApiEnabled !== undefined ? (isApiEnabled ? 1 : 0) : (currentUser.is_api_enabled !== undefined ? currentUser.is_api_enabled : 1);
 
       let finalRole = currentUser.role || 'user';
-      let finalIsAdmin = currentUser.is_admin;
+      let finalIsAdmin = currentUser.is_admin === 1 || currentUser.is_admin === true ? 1 : 0;
 
       if (role !== undefined) {
         finalRole = role;
-        finalIsAdmin = (role === 'superadmin' || role === 'admin') ? 1 : 0;
+        finalIsAdmin = isAdminRole(role) ? 1 : 0;
       } else if (isAdmin !== undefined) {
         finalIsAdmin = isAdmin ? 1 : 0;
         if (isAdmin && !currentUser.role) {
           finalRole = 'superadmin';
-        } else if (!isAdmin && currentUser.role === 'superadmin') {
+        } else if (!isAdmin && isSuperAdminRole(currentUser.role)) {
           finalRole = 'user';
         }
       }
 
-      // ห้ามพนักงานตั้งใครเป็น Super Admin
-      if (!isSuperAdminOperator && (finalRole === 'superadmin' || (finalIsAdmin === 1 && finalRole !== 'admin'))) {
-        return NextResponse.json({ message: "พนักงานไม่สามารถตั้งซูเปอร์แอดมินได้" }, { status: 403 });
+      // ห้ามพนักงานตั้งใครเป็น Super Admin หรือ Owner
+      if (!isSuperAdminOperator && (isSuperAdminRole(finalRole) || (finalIsAdmin === 1 && finalRole !== 'admin'))) {
+        await connection.rollback();
+        return NextResponse.json({ message: "พนักงานไม่สามารถตั้งซูเปอร์แอดมินหรือ Owner ได้" }, { status: 403 });
       }
 
       let targetPoints = points !== undefined ? points : undefined;
@@ -324,34 +325,22 @@ export async function PATCH(request: Request) {
       const finalPoints = Math.max(0, Number(targetPoints ?? 0));
       const now = new Date();
 
-      const isEditingAdmin = finalRole === 'admin' || finalRole === 'superadmin' || finalIsAdmin === 1;
+      const isEditingAdmin = isAdminRole(finalRole) || finalIsAdmin === 1;
 
-      const manualTopupTargets: Array<{ id: string; site_id: string; points: number }> = [];
-      if (isEditingAdmin && currentUser.email) {
-        const [targetRows] = await connection.execute(
-          "SELECT id, site_id, points FROM users WHERE email = ? FOR UPDATE",
-          [currentUser.email]
-        );
-        for (const target of targetRows as PointRow[]) {
-          manualTopupTargets.push({
-            id: target.id,
-            site_id: target.site_id || siteId,
-            points: Number(target.points ?? 0),
-          });
-        }
-      } else {
-        manualTopupTargets.push({
-          id: currentUser.id,
-          site_id: currentUser.site_id || siteId,
-          points: Number(currentUser.points ?? 0),
-        });
-      }
+      // Keep points/history attached to the exact locked target row. In the
+      // central main view an email may represent several site rows; do not
+      // fan a mutation out by email.
+      const manualTopupTargets: Array<{ id: string; site_id: string; points: number }> = [{
+        id: currentUser.id,
+        site_id: currentUser.site_id || siteId,
+        points: Number(currentUser.points ?? 0),
+      }];
 
       if (isEditingAdmin && currentUser.email) {
         await connection.execute(
           `UPDATE users 
            SET display_name = ?, is_admin = ?, role = ?, is_active = ?, points = ?, user_tier = ?, tier_expires_at = ?, is_banned = ?, is_api_enabled = ?, updated_at = ?
-           WHERE email = ?`,
+           WHERE ${targetScope.whereClause}`,
           [
             finalDisplayName,
             finalIsAdmin,
@@ -363,14 +352,14 @@ export async function PATCH(request: Request) {
             finalIsBanned,
             finalIsApiEnabled,
             now,
-            currentUser.email
+            ...targetScope.params,
           ]
         );
       } else {
         await connection.execute(
           `UPDATE users 
            SET display_name = ?, is_admin = ?, role = ?, is_active = ?, points = ?, user_tier = ?, tier_expires_at = ?, is_banned = ?, is_api_enabled = ?, updated_at = ?
-           WHERE id = ?`,
+           WHERE ${targetScope.whereClause}`,
           [
             finalDisplayName,
             finalIsAdmin,
@@ -382,7 +371,7 @@ export async function PATCH(request: Request) {
             finalIsBanned,
             finalIsApiEnabled,
             now,
-            id
+            ...targetScope.params,
           ]
         );
       }
@@ -458,7 +447,9 @@ export async function PATCH(request: Request) {
         category: ["points", "pointsDelta"].some((key) => Object.prototype.hasOwnProperty.call(parsed.data, key))
           ? "finance"
           : "users",
-        severity: role !== undefined || isAdmin !== undefined || points !== undefined || pointsDelta !== undefined
+        severity: role === "owner" || role === "superadmin" || points !== undefined || pointsDelta !== undefined
+          ? "critical"
+          : role !== undefined || isAdmin !== undefined
           ? "high"
           : "medium",
         entityType: "user",
@@ -515,7 +506,7 @@ const createUserSchema = z.object({
   email: z.string().email("รูปแบบอีเมลไม่ถูกต้อง"),
   password: z.string().min(8, "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร"),
   displayName: z.string().min(1, "กรุณากรอกชื่อแสดง").max(64, "ชื่อแสดงต้องไม่ยาวเกิน 64 ตัวอักษร"),
-  role: z.enum(['user', 'admin', 'superadmin']).optional().default('user'),
+  role: z.enum(['user', 'admin', 'superadmin', 'owner']).optional().default('user'),
   userTier: z.enum(['normal', 'vip', 'walkin']).optional().default('normal'),
   points: z.number().min(0).optional().default(0),
   isActive: z.boolean().optional().default(true),
@@ -540,14 +531,14 @@ export async function POST(request: Request) {
 
     const { email, password, displayName, role, userTier, points, isActive } = parsed.data;
 
-    // ตรวจสอบ: ห้ามพนักงาน (admin) สร้างซูเปอร์แอดมิน
-    if (!isSuperAdminOperator && role === 'superadmin') {
-      return NextResponse.json({ message: "พนักงานไม่สามารถสร้างซูเปอร์แอดมินได้" }, { status: 403 });
+    // ตรวจสอบ: ห้ามพนักงาน (admin) สร้าง Super Admin หรือ Owner
+    if (!isSuperAdminOperator && isSuperAdminRole(role)) {
+      return NextResponse.json({ message: "พนักงานไม่สามารถสร้างซูเปอร์แอดมินหรือ Owner ได้" }, { status: 403 });
     }
 
     // อนุญาตบัญชีหลัก หรือ Owner ใน Local Demo ตามนโยบายแยกสภาพแวดล้อม
-    if (role === 'superadmin' && !canAssignSuperAdminRole(email)) {
-      return NextResponse.json({ message: "บัญชีนี้ไม่ได้อยู่ใน PRIMARY_SUPER_ADMIN_EMAIL จึงตั้งเป็น Super Admin ไม่ได้" }, { status: 403 });
+    if (isSuperAdminRole(role) && !canAssignSuperAdminRole(email)) {
+      return NextResponse.json({ message: "บัญชีนี้ไม่ได้อยู่ใน PRIMARY_SUPER_ADMIN_EMAIL จึงตั้งเป็น Super Admin/Owner ไม่ได้" }, { status: 403 });
     }
 
     const siteId = getSiteId();
@@ -575,7 +566,7 @@ export async function POST(request: Request) {
       password_hash: passwordHash,
       display_name: displayName,
       role: role,
-      is_admin: role === 'admin' || role === 'superadmin' ? 1 : 0,
+      is_admin: isAdminRole(role) ? 1 : 0,
       user_tier: userTier,
       points: points,
       is_active: isActive ? 1 : 0,
@@ -636,8 +627,8 @@ export async function POST(request: Request) {
     await recordAdminAuditEvent({
       actor: me,
       action: "USER_CREATE",
-      category: role === "admin" || role === "superadmin" ? "security" : "users",
-      severity: role === "superadmin" ? "critical" : role === "admin" ? "high" : "medium",
+      category: isAdminRole(role) ? "security" : "users",
+      severity: role === "owner" || role === "superadmin" ? "critical" : role === "admin" ? "high" : "medium",
       entityType: "user",
       entityId: record.id,
       entityLabel: record.email,
@@ -659,7 +650,7 @@ export async function POST(request: Request) {
       details: `สร้างผู้ใช้ใหม่: ${record.email} (${displayName}) - Role: ${role}, Tier: ${userTier}`,
     });
 
-    return NextResponse.json({ user: record, success: true }, { status: 201 });
+    return NextResponse.json({ user: toAdminCreatedUser(record, siteId), success: true }, { status: 201 });
   } catch (error: unknown) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "ไม่สามารถสร้างผู้ใช้ได้" },
@@ -681,9 +672,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     const siteId = getSiteId();
+    const targetScope = buildUserTargetScope(siteId, id);
     const [existingRows] = await pool.execute(
-      "SELECT * FROM users WHERE id = ? AND site_id = ? LIMIT 1",
-      [id, siteId]
+      `SELECT * FROM users WHERE ${targetScope.whereClause} LIMIT 1`,
+      targetScope.params,
     );
     const list = existingRows as UserDbRow[];
     if (list.length === 0) {
@@ -692,9 +684,9 @@ export async function DELETE(request: NextRequest) {
 
     const user = list[0];
 
-    // ห้ามพนักงาน (admin) ลบผู้ดูแลระบบคนอื่น (admin หรือ superadmin)
+    // ห้ามพนักงาน (admin) ลบผู้ดูแลระบบคนอื่น (admin, superadmin หรือ owner)
     if (!isSuperAdminOperator) {
-      const isTargetAdmin = user.role === 'admin' || user.role === 'superadmin' || user.is_admin === 1;
+      const isTargetAdmin = isAdminRole(user.role) || user.is_admin === 1 || user.is_admin === true;
       if (isTargetAdmin) {
         return NextResponse.json({ message: "พนักงานไม่สามารถลบผู้ดูแลระบบได้" }, { status: 403 });
       }
@@ -704,7 +696,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ message: "ไม่สามารถลบบัญชีของตัวเองได้" }, { status: 400 });
     }
 
-    await pool.execute("DELETE FROM users WHERE id = ?", [id]);
+    await pool.execute(`DELETE FROM users WHERE ${targetScope.whereClause}`, targetScope.params);
 
     await recordAdminAuditEvent({
       actor: me,

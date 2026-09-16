@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { z } from "zod";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/server";
+import { isAdminUser } from "@/lib/auth/roles";
 import { getSiteId } from "@/lib/site";
 import {
   fetchAllProducts,
@@ -77,7 +78,7 @@ const updateSchema = z.object({
 
 export async function GET(request: NextRequest) {
   const me = await getCurrentUser();
-  const isAdmin = me?.role === 'superadmin' || me?.role === 'admin' || me?.isAdmin;
+  const isAdmin = isAdminUser(me);
   if (!me || !isAdmin) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
@@ -150,7 +151,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   const me = await getCurrentUser();
-  const isAdmin = me?.role === 'superadmin' || me?.role === 'admin' || me?.isAdmin;
+  const isAdmin = isAdminUser(me);
   if (!me || !isAdmin) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
@@ -270,7 +271,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const me = await getCurrentUser();
-  const isAdmin = me?.role === 'superadmin' || me?.role === 'admin' || me?.isAdmin;
+  const isAdmin = isAdminUser(me);
   if (!me || !isAdmin) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
@@ -495,7 +496,10 @@ export async function PATCH(request: Request) {
     }
 
     if (Object.keys(updatePayload).length > 0) {
-      await updateProduct(typeId, updatePayload);
+      // Reuse the product row selected under the current site's visibility
+      // scope. The repository then carries this trusted id through its final
+      // scoped UPDATE instead of reopening by typeId alone.
+      await updateProduct(typeId, updatePayload, false, currentProduct.id);
     }
 
     await recordAdminAuditEvent({
@@ -596,7 +600,7 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: NextRequest) {
   const me = await getCurrentUser();
-  const isAdmin = me?.role === 'superadmin' || me?.role === 'admin' || me?.isAdmin;
+  const isAdmin = isAdminUser(me);
   if (!me || !isAdmin) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
@@ -615,7 +619,9 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ message: "ไม่พบสินค้า" }, { status: 404 });
     }
 
-    await deleteProduct(typeId);
+    // Delete only the exact row selected under the current site's visibility
+    // scope; shared/global products must not make another local row eligible.
+    await deleteProduct(typeId, product.id);
 
     await recordAdminAuditEvent({
       actor: me,

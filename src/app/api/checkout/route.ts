@@ -13,6 +13,11 @@ import {
   waitForCartCheckout,
   type CartCheckoutPayload,
 } from "@/lib/cart/checkout";
+import { parseAppByMariStorefrontTypeId } from "@/lib/appbymari/types";
+import {
+  attachAppByMariCase,
+  executeAppByMariStorefrontPurchase,
+} from "@/lib/appbymari/purchase";
 
 const bodySchema = z.object({
   lines: z.array(
@@ -63,6 +68,37 @@ export async function POST(request: NextRequest) {
   const siteId = getSiteId();
   const requestFingerprint = createCartCheckoutFingerprint(payload);
   try {
+    const externalLines = payload.lines.filter((line) => parseAppByMariStorefrontTypeId(line.typeId));
+    if (externalLines.length > 0) {
+      if (externalLines.length !== 1 || payload.lines.length !== 1) {
+        return noStoreJson(
+          { ok: false, message: "สินค้าจากร้านหลักต้องสั่งซื้อแยกจากสินค้าในร้าน StoreByMari" },
+          409,
+          { "Idempotency-Key": idempotencyKey },
+        );
+      }
+      const line = externalLines[0];
+      const result = await executeAppByMariStorefrontPurchase({
+        buyerUserId: user.id,
+        typeId: line.typeId,
+        quantity: line.quantity,
+        idempotencyKey,
+      });
+      let body = result.body as typeof result.body & { caseOrder?: unknown };
+      if (result.status === 200 && body.ok && result.orderIds?.length) {
+        const caseOrder = await attachAppByMariCase({ buyerUserId: user.id, orderIds: result.orderIds });
+        if (caseOrder) body = { ...body, caseOrder };
+        (revalidateTag as any)("products");
+        revalidatePath("/");
+        revalidatePath("/products");
+        revalidatePath("/api/products");
+      }
+      const headers: HeadersInit = { "Idempotency-Key": idempotencyKey };
+      if (result.replayed) headers["Idempotency-Replayed"] = "true";
+      if (result.status === 202) headers["Retry-After"] = "1";
+      return noStoreJson(body, result.status, headers);
+    }
+
     const claim = await claimCartCheckout({
       siteId,
       buyerUserId: user.id,

@@ -1,6 +1,12 @@
 import type { MetadataRoute } from 'next'
 
 import { getSiteConfig } from '@/lib/site-config'
+import {
+  SITE_BRAND_PWA_ICON_192_PATH,
+  SITE_BRAND_PWA_ICON_512_PATH,
+  SITE_BRAND_PWA_MASKABLE_192_PATH,
+  SITE_BRAND_PWA_MASKABLE_512_PATH,
+} from '@/lib/site-branding'
 
 export default function manifest(): MetadataRoute.Manifest {
   const { siteName } = getSiteConfig();
@@ -16,25 +22,25 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#170f1d',
     icons: [
       {
-        src: '/pwa-app-icon-192.png?v=20260909',
+        src: SITE_BRAND_PWA_ICON_192_PATH,
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/pwa-app-icon-maskable-192.png?v=20260909',
+        src: SITE_BRAND_PWA_MASKABLE_192_PATH,
         sizes: '192x192',
         type: 'image/png',
         purpose: 'maskable',
       },
       {
-        src: '/pwa-app-icon-512.png?v=20260909',
+        src: SITE_BRAND_PWA_ICON_512_PATH,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/pwa-app-icon-maskable-512.png?v=20260909',
+        src: SITE_BRAND_PWA_MASKABLE_512_PATH,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',

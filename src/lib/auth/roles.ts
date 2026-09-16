@@ -13,6 +13,15 @@ export function configuredPrimarySuperAdminEmail(env: AuthEnvironment = process.
   return email || null;
 }
 
+/** Owner is the named top-level account role; superadmin remains supported for compatibility. */
+export function isSuperAdminRole(role: string | null | undefined): boolean {
+  return role === "owner" || role === "superadmin";
+}
+
+export function isAdminRole(role: string | null | undefined): boolean {
+  return role === "admin" || isSuperAdminRole(role);
+}
+
 /** Enable the demo Owner policy only for the dedicated loopback database. */
 export function isLocalDemoAuthEnabled(
   env: AuthEnvironment = process.env,
@@ -34,10 +43,10 @@ export function isSuperAdminManagementOperator(
     return true;
   }
 
-  return isLocalDemoAuthEnabled(env) && user?.role === "superadmin";
+  return isLocalDemoAuthEnabled(env) && isSuperAdminRole(user?.role);
 }
 
-/** Allow Super Admin targets only for the existing owner or the local demo. */
+/** Allow privileged role targets only for the configured primary account or local demo. */
 export function canAssignSuperAdminRole(
   email: string | null | undefined,
   env: AuthEnvironment = process.env,
@@ -56,13 +65,13 @@ export function canAssignSuperAdminRole(
 export function isSuperAdminUser(
   user: Pick<PublicUser, "role" | "isAdmin"> | null | undefined,
 ): boolean {
-  return user?.role === "superadmin" || (user?.isAdmin === true && !user?.role);
+  return isSuperAdminRole(user?.role) || (user?.isAdmin === true && !user?.role);
 }
 
 export function isAdminUser(
   user: Pick<PublicUser, "role" | "isAdmin"> | null | undefined,
 ): boolean {
-  return user?.role === "superadmin" || user?.role === "admin" || user?.isAdmin === true;
+  return isAdminRole(user?.role) || user?.isAdmin === true;
 }
 
 export function canViewAdminReports(
@@ -71,3 +80,5 @@ export function canViewAdminReports(
 ): boolean {
   return siteId === "main" ? isSuperAdminUser(user) : isAdminUser(user);
 }
+
+/** Provider balances are global configuration data; only main SuperAdmin may query them. */

@@ -36,8 +36,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body || 'มีรายการอัปเดตใหม่',
-    icon: data.icon || '/icon-192x192.png',
-    badge: data.badge || '/badge-72x72.png',
+    icon: data.icon || '/pwa-app-icon-192.png?v=20260916',
+    badge: data.badge || '/badge-72x72.png?v=20260916',
     tag: data.tag || ('appbymari-' + Date.now()),
     renotify: true,
     requireInteraction: true,

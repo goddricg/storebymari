@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { RowDataPacket } from "mysql2/promise";
 
 import { getCurrentUser } from "@/lib/auth/server";
+import { isAdminUser } from "@/lib/auth/roles";
 import pool from "@/lib/mysql";
 import { getSiteId } from "@/lib/site";
 import {
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return noStoreResponse({ message: "Unauthorized" }, 401);
-    if (!(user.role === "superadmin" || user.role === "admin" || user.isAdmin)) {
+    if (!isAdminUser(user)) {
       return noStoreResponse({ message: "Forbidden" }, 403);
     }
 

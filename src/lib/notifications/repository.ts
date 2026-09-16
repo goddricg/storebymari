@@ -210,7 +210,7 @@ export async function createBroadcastUserNotifications(input: {
   if (target === "USER") {
     query += ` AND role = 'user'`;
   } else if (target === "ADMIN") {
-    query += ` AND role IN ('admin', 'superadmin')`;
+    query += ` AND role IN ('admin', 'superadmin', 'owner')`;
   }
 
   try {

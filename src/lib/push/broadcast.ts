@@ -9,6 +9,7 @@ import {
 } from "./dispatch";
 import { StoredPushSubscription } from "./repository";
 import { createBroadcastUserNotifications } from "@/lib/notifications/repository";
+import { SITE_BRAND_PWA_BADGE_PATH, SITE_BRAND_PWA_ICON_192_PATH } from "@/lib/site-branding";
 
 export interface BroadcastNotificationInput {
   title: string;
@@ -58,7 +59,7 @@ export async function broadcastPushNotification(
   const params: string[] = [siteId];
 
   if (target === "ADMIN") {
-    query += ` AND role IN ('admin', 'superadmin')`;
+    query += ` AND role IN ('admin', 'superadmin', 'owner')`;
   } else if (target === "USER") {
     query += ` AND role = 'user'`;
   }
@@ -84,8 +85,8 @@ export async function broadcastPushNotification(
   const payload: PushNotificationPayload = {
     title: input.title,
     body: input.body,
-    icon: "/pwa-app-icon-192.png",
-    badge: "/badge-72x72.png",
+    icon: SITE_BRAND_PWA_ICON_192_PATH,
+    badge: SITE_BRAND_PWA_BADGE_PATH,
     url: input.url || "/",
     tag: `broadcast-${broadcastId}`,
     data: {

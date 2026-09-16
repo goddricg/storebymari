@@ -96,7 +96,7 @@ export default function ReportSupportPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Debounce ref for verification
-  const verifyTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const verifyTimerRef = useRef<number | null>(null);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -175,10 +175,10 @@ export default function ReportSupportPage() {
   // Handle identifier change with debounce
   const handleIdentifierChange = (val: string) => {
     setIdentifier(val);
-    if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current);
+    if (verifyTimerRef.current) window.clearTimeout(verifyTimerRef.current);
 
     if (val.trim().length >= 4) {
-      verifyTimerRef.current = setTimeout(() => {
+      verifyTimerRef.current = window.setTimeout(() => {
         runVerification(val);
       }, 500);
     } else {

@@ -10,7 +10,7 @@ async function main() {
   });
 
   // Find all admins
-  const [admins] = await connection.query("SELECT email, MAX(points) as max_points FROM users WHERE is_admin = 1 OR role IN ('admin', 'superadmin') GROUP BY email");
+  const [admins] = await connection.query("SELECT email, MAX(points) as max_points FROM users WHERE is_admin = 1 OR role IN ('admin', 'superadmin', 'owner') GROUP BY email");
   
   for (const admin of admins) {
     console.log(`Syncing points for ${admin.email} to ${admin.max_points}`);

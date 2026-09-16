@@ -16,7 +16,12 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { triggerHaptic } from "@/lib/ui/haptics";
 import { subscribeToPush, isIos, isStandalonePwa } from "@/lib/push/client";
-import { SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
+import {
+  SITE_BRAND_LOGO_ALT,
+  SITE_BRAND_LOGO_HEIGHT,
+  SITE_BRAND_LOGO_PATH,
+  SITE_BRAND_LOGO_WIDTH,
+} from "@/lib/site-branding";
 
 export function PwaNotificationPermissionGate() {
   const [isMounted, setIsMounted] = useState(false);
@@ -208,9 +213,9 @@ export function PwaNotificationPermissionGate() {
           <div className="relative mb-3 flex h-16 w-24 items-center justify-center rounded-2xl bg-gradient-to-b from-[#2a1b33] to-[#170f1d] p-1 shadow-2xl ring-1 ring-white/15">
             <Image
               src={SITE_BRAND_LOGO_PATH}
-              alt="Mari Studio logo"
-              width={1536}
-              height={1024}
+              alt={SITE_BRAND_LOGO_ALT}
+              width={SITE_BRAND_LOGO_WIDTH}
+              height={SITE_BRAND_LOGO_HEIGHT}
               sizes="88px"
               className="h-full w-full object-contain"
               priority

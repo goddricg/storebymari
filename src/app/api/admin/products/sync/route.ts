@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { fetchExternalProducts } from "@/lib/products/external";
 import { upsertProductsFromExternal } from "@/lib/products/repository";
 import { requireSuperAdmin } from "@/lib/auth/server";
+import { getSiteId } from "@/lib/site";
 import { getApiProviderById } from "@/lib/api-providers/repository";
 import {
   getAdminAuditRequestContext,
@@ -56,7 +57,9 @@ export async function POST(request: NextRequest) {
     }
 
     const externalProducts = await fetchExternalProducts(provider);
-    await upsertProductsFromExternal(externalProducts, provider.id);
+    // Keep the sync target tied to the trusted deployment site. Main syncs
+    // shared/global rows; child syncs can only target its own local rows.
+    await upsertProductsFromExternal(externalProducts, provider.id, getSiteId());
 
     await recordAdminAuditEvent({
       actor: me,

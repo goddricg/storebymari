@@ -24,13 +24,10 @@ import {
 } from "@/components/products/featured-product-cards";
 import { BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { DreamyOrnament } from "@/components/dreamy-ui/ornaments";
-import { getSiteId } from "@/lib/site";
 import { MAIN_SITE_BROWSER_TITLE, getSiteConfig } from "@/lib/site-config";
-import RankingCard from "@/components/home/ranking-card";
-import { getRankingSnapshot } from "@/lib/ranking/repository";
+import { loadLayoutPublicSettings } from "@/lib/settings/load-layout-public-settings";
 import FrontStoreHeader from "@/components/home/front-store-header";
 import FrontStoreExtras from "@/components/home/front-store-extras";
-import HomePoster from "@/components/home-poster";
 import AnnouncementBar from "@/components/announcement-bar";
 import {
   FrontStoreCategories,
@@ -42,10 +39,12 @@ export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const { siteName, isChildSite } = getSiteConfig();
+  const publicSettings = await loadLayoutPublicSettings();
+  const configuredTitle = publicSettings.site_title?.trim();
   return {
-    title: isChildSite
+    title: configuredTitle || (isChildSite
       ? `${siteName} | ขายแอพพรีเมียมราคาถูก Netflix, Spotify, YouTube แท้`
-      : MAIN_SITE_BROWSER_TITLE,
+      : MAIN_SITE_BROWSER_TITLE),
     description:
       `${siteName} ศูนย์รวมบัญชีพรีเมียมแท้ ราคาถูก ปลอดภัย พร้อมรับประกัน ใช้งานได้จริง ทั้ง Netflix, Spotify, YouTube Premium, Disney+ และอีกมากมาย บริการรวดเร็ว ตอบไว ดูแลหลังขาย 24 ชม.`,
     keywords: [
@@ -78,8 +77,13 @@ const HOME_SETTINGS_KEYS = [
   "home_movie_poster_3",
   "home_movie_poster_4",
   "home_movie_poster_5",
+  "home_movie_poster_6",
   "home_featured_enabled",
+  "home_poster_enabled",
+  "home_poster_image_url",
+  "home_poster_link_url",
   "home_shortcuts_enabled",
+  "home_shortcuts_count",
   "home_shortcut_image_1",
   "home_shortcut_link_1",
   "home_shortcut_image_2",
@@ -119,6 +123,13 @@ function formatOrderTimestamp(value: string | null) {
   }).format(date);
 }
 
+function normalizeShortcutCount(value: string | null) {
+  if (value === null || value.trim() === "") return 4;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 4;
+  return Math.min(4, Math.max(0, Math.trunc(parsed)));
+}
+
 // ✨ คืนชีพฟังก์ชันหลักที่มิมิทำหล่นหายไป! 
 export default function Home() {
   const { siteName, siteUrl } = getSiteConfig();
@@ -126,16 +137,17 @@ export default function Home() {
     <main className="front-store-page">
       <BreadcrumbJsonLd items={[{ name: "หน้าแรก", url: siteUrl }]} />
       <h1 className="sr-only">{siteName} ศูนย์รวมบัญชีพรีเมียมแท้ ราคาถูก ปลอดภัย บริการครบ จบในหน้าเดียว ให้บริการคนไทย</h1>
-      <FrontStoreHeader />
-      <HomePoster />
-      <AnnouncementBar />
-      <section className="front-store-primary">
-        <div className="front-store-container">
-          <Suspense fallback={<HomeProductsSkeleton />}>
-            <ProductsSection />
-          </Suspense>
-        </div>
-      </section>
+      <div className="front-store-scale-shell">
+        <FrontStoreHeader />
+        <AnnouncementBar />
+        <section className="front-store-primary">
+          <div className="front-store-container">
+            <Suspense fallback={<HomeProductsSkeleton />}>
+              <ProductsSection />
+            </Suspense>
+          </div>
+        </section>
+      </div>
 
     </main>
   );
@@ -149,7 +161,6 @@ async function ProductsSection() {
     gridPageResult,
     gridCategoriesResult,
     homeSettingsResult,
-    rankingSnapshotResult,
   ] = await Promise.all([
     readHomeData("recommended products", fetchRecommendedProducts, []),
     readHomeData("recent orders", () => listRecentOrders(20), []),
@@ -164,11 +175,6 @@ async function ProductsSection() {
       () => getSettingValuesCached(HOME_SETTINGS_KEYS),
       Object.fromEntries(HOME_SETTINGS_KEYS.map((key) => [key, null])),
     ),
-    readHomeData(
-      "ranking summary",
-      () => getSiteId() === "main" ? getRankingSnapshot() : Promise.resolve(null),
-      null,
-    ),
   ]);
 
   const homeDataResults = [
@@ -177,7 +183,6 @@ async function ProductsSection() {
     gridPageResult,
     gridCategoriesResult,
     homeSettingsResult,
-    rankingSnapshotResult,
   ];
   const hasHomeDataFailure = homeDataResults.some((result) => !result.available);
   const recommendedProducts = recommendedProductsResult.value;
@@ -185,13 +190,16 @@ async function ProductsSection() {
   const gridPage = gridPageResult.value;
   const gridCategories = gridCategoriesResult.value;
   const homeSettings = homeSettingsResult.value;
-  const rankingSnapshot = rankingSnapshotResult.value;
   const youtubeUrl = homeSettings["home_youtube_url"];
   const youtubeEnabled = homeSettings["home_youtube_enabled"] !== "false";
   const youtubeTitle = homeSettings["home_youtube_title"] || "";
   const moviesEnabled = homeSettings["home_movies_enabled"] === "true";
   const featuredEnabled = homeSettings["home_featured_enabled"] !== "false";
   const shortcutsEnabled = homeSettings["home_shortcuts_enabled"] !== "false";
+  const shortcutCount = normalizeShortcutCount(homeSettings["home_shortcuts_count"]);
+  const heroEnabled = homeSettings["home_poster_enabled"] !== "false";
+  const heroImageUrl = homeSettings["home_poster_image_url"]?.trim() || null;
+  const heroLinkUrl = homeSettings["home_poster_link_url"]?.trim() || null;
 
   const moviePosters = [
     homeSettings["home_movie_poster_1"],
@@ -250,9 +258,14 @@ async function ProductsSection() {
 
   return (
     <div className="front-store-content">
-      <FrontStoreHero />
+      <FrontStoreHero
+        enabled={heroEnabled}
+        imageUrl={heroImageUrl}
+        linkUrl={heroLinkUrl}
+      />
       <FrontStorePromos
         enabled={shortcutsEnabled}
+        count={shortcutCount}
         promos={shortcutCards.slice(0, 4).map((card, index) => ({
           image: card.image,
           link: card.link ?? ["/register", "/support/report", "/products"][index],
@@ -276,14 +289,6 @@ async function ProductsSection() {
             ขณะนี้ไม่สามารถโหลดข้อมูลหน้าร้านได้ครบ กรุณาลองใหม่อีกครั้งภายหลัง
           </p>
         </section>
-      ) : null}
-
-      {rankingSnapshot ? (
-        <RankingCard
-          initialRows={rankingSnapshot.rows}
-          settings={rankingSnapshot.settings}
-          initialPeriodLabel={rankingSnapshot.periodLabel}
-        />
       ) : null}
 
       {youtubeEnabled && videoId && (

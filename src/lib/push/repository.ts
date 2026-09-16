@@ -128,9 +128,9 @@ export async function isSubscriptionActive(userId: string, endpoint: string): Pr
 }
 
 export async function getActiveAdminSubscriptions(siteId?: string): Promise<StoredPushSubscription[]> {
-  const adminRoles = ["admin", "superadmin"];
-  let query = `SELECT * FROM web_push_subscriptions WHERE role IN (?, ?)`;
-  const params: string[] = [adminRoles[0], adminRoles[1]];
+  const adminRoles = ["admin", "superadmin", "owner"];
+  let query = `SELECT * FROM web_push_subscriptions WHERE role IN (?, ?, ?)`;
+  const params: string[] = [...adminRoles];
 
   if (siteId && siteId !== "main") {
     query += ` AND (site_id = ? OR site_id = 'main')`;

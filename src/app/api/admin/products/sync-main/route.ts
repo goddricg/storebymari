@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { findProductByTypeId, syncProductToFirestore } from "@/lib/products/repository";
+import { getSiteId } from "@/lib/site";
 import {
   getAdminAuditRequestContext,
   recordAdminAuditEvent,
@@ -13,6 +14,12 @@ export async function POST(request: NextRequest) {
     // ตรวจสอบ Secret Key
     if (!secret || secret !== process.env.MAIN_SITE_SYNC_SECRET) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
+    // This endpoint writes the main-site realtime projection. Reject a
+    // misrouted child deployment before reading a product or syncing it.
+    if (getSiteId() !== "main") {
+      return NextResponse.json({ success: false, message: "Main site only" }, { status: 403 });
     }
 
     if (!typeId) {

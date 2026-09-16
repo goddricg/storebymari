@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/auth/use-session";
 import { DreamyOrnament } from "@/components/dreamy-ui/ornaments";
 import { triggerHaptic } from "@/lib/ui/haptics";
+import { getSiteId } from "@/lib/site";
 
 type BottomNavItem = {
   href: string;
@@ -188,7 +189,7 @@ function isItemActive(pathname: string, href: string) {
 }
 
 export default function BottomNavigation() {
-  const isMainSite = process.env.NEXT_PUBLIC_SITE_ID === "main";
+  const isMainSite = getSiteId() === "main";
   const pathname = usePathname();
   const router = useRouter();
   const { user: currentUser } = useSession();

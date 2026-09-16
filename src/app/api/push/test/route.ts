@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/server";
 import { isAdminUser } from "@/lib/auth/roles";
 import { getUserSubscriptions } from "@/lib/push/repository";
 import { sendPushNotification } from "@/lib/push/dispatch";
+import { SITE_BRAND_PWA_BADGE_PATH, SITE_BRAND_PWA_ICON_192_PATH } from "@/lib/site-branding";
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,8 +33,8 @@ export async function POST(request: NextRequest) {
     const testPayload = {
       title: "🔔 ทดสอบแจ้งเตือน AppByMari",
       body: `ระบบ Web Push แจ้งเตือนเคสปัญหาพร้อมใช้งานแล้ว! เวลา ${new Date().toLocaleTimeString("th-TH")}`,
-      icon: "/icon-192x192.png",
-      badge: "/badge-72x72.png",
+      icon: SITE_BRAND_PWA_ICON_192_PATH,
+      badge: SITE_BRAND_PWA_BADGE_PATH,
       tag: "test-push-" + Date.now(),
       url: "/admin?menu=support",
       data: {

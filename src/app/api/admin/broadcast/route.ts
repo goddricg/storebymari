@@ -29,9 +29,7 @@ const broadcastSchema = z.object({
 });
 
 function isAuthorized(user: any): boolean {
-  if (!user) return false;
-  if (user.email?.toLowerCase() === "zeriessand@gmail.com") return true;
-  return isAdminUser(user);
+  return Boolean(user) && isAdminUser(user);
 }
 
 export async function GET() {

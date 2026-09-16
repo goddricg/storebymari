@@ -4,7 +4,7 @@ import type { PoolConnection, RowDataPacket } from "mysql2/promise";
 import pool from "@/lib/mysql";
 import { getSiteId } from "@/lib/site";
 import { RECEIPT_FIXED_SELLER } from "@/lib/receipts/template";
-import { SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
+import { resolveSiteBrandLogo, SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
 import type {
   CashReceiptSummary,
   ReceiptBuyerSnapshot,
@@ -133,7 +133,7 @@ export async function getReceiptSellerSnapshot(
     email: values.get("receipt_seller_email") || DEFAULT_RECEIPT_SELLER.email,
     phone: values.get("receipt_seller_phone") || DEFAULT_RECEIPT_SELLER.phone,
     footer: values.get("receipt_footer") || DEFAULT_RECEIPT_SELLER.footer,
-    logoUrl: values.get("site_logo_url") || DEFAULT_RECEIPT_SELLER.logoUrl,
+    logoUrl: resolveSiteBrandLogo(values.get("site_logo_url")),
   };
 }
 

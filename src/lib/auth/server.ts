@@ -69,7 +69,7 @@ export async function requireAdmin(redirectPath = "/login"): Promise<PublicUser>
     redirect(redirectPath);
   }
 
-  // ตรวจสอบ role: superadmin หรือ admin
+  // ตรวจสอบ role: owner, superadmin หรือ admin
   if (!isAdminUser(user)) {
     redirect("/");
   }
@@ -84,7 +84,7 @@ export async function requireSuperAdmin(redirectPath = "/login"): Promise<Public
     redirect(redirectPath);
   }
 
-  // ตรวจสอบ role: superadmin เท่านั้น
+  // ตรวจสอบ role: owner หรือ superadmin เท่านั้น
   if (!isSuperAdminUser(user)) {
     redirect("/");
   }

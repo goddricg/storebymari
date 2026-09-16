@@ -218,6 +218,19 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
   color: #fff7fc;
 }
 
+/* Keep the storefront's proportions consistent while letting the browser
+   preserve the document flow. The 90% visual scale is intentionally scoped to
+   the home shell so public dashboard/catalogue pages keep their own sizing. */
+.front-store-scale-shell {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .front-store-scale-shell {
+    zoom: 0.9;
+  }
+}
+
 .front-store-page::before {
   position: fixed;
   z-index: -1;
@@ -400,6 +413,77 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
   margin-left: -4px;
 }
 
+.front-store-account-trigger {
+  min-width: 162px;
+  padding-inline: 10px 14px;
+}
+
+.front-store-account-cat-wrap {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgb(255 183 224 / 62%);
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 25%, rgb(255 210 239 / 24%), rgb(52 14 44 / 72%));
+  box-shadow: 0 0 14px rgb(255 65 176 / 38%), inset 0 1px 0 rgb(255 255 255 / 24%);
+}
+
+.front-store-account-cat {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: 50% 85%;
+  animation: front-store-cat-idle 4.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.front-store-account-trigger:hover .front-store-account-cat,
+.front-store-account-trigger:focus-visible .front-store-account-cat {
+  animation-duration: 1.35s;
+}
+
+.front-store-account-trigger:active .front-store-account-cat {
+  transform: scale(0.92) rotate(-4deg);
+}
+
+.front-store-account-popover {
+  color: #fff;
+}
+
+.front-store-account-menu-item {
+  min-height: 42px;
+  gap: 10px;
+  border-radius: 10px;
+  color: #fff2fc;
+  text-decoration: none;
+}
+
+.front-store-account-menu-item:hover,
+.front-store-account-menu-item:focus-visible {
+  background: rgb(229 24 127 / 24%);
+  color: #fff;
+  outline: none;
+}
+
+.front-store-account-menu-item svg {
+  width: 18px;
+  height: 18px;
+  color: #ff88c9;
+}
+
+.front-store-account-logout {
+  color: #ff9dcf;
+}
+
+.front-store-account-logout svg {
+  color: #ff9dcf;
+}
+
 .front-store-menu-button {
   display: none;
 }
@@ -491,6 +575,12 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
   border-radius: 19px;
 }
 
+.front-store-hero-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
 .front-store-hero-media {
   position: relative;
   overflow: hidden;
@@ -577,7 +667,7 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
 
 .front-store-promos {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 15px;
   scroll-margin-top: 12px;
 }
@@ -893,6 +983,25 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
     display: none;
   }
 
+  .front-store-account-trigger {
+    display: inline-flex;
+    min-width: 52px;
+    width: 52px;
+    height: 52px;
+    padding: 1px;
+    border-radius: 16px;
+  }
+
+  .front-store-account-trigger .front-store-account-label,
+  .front-store-account-trigger .front-store-login-chevron {
+    display: none;
+  }
+
+  .front-store-account-cat-wrap {
+    width: 48px;
+    height: 48px;
+  }
+
   .front-store-header-actions {
     margin-left: auto;
     gap: 4px;
@@ -956,7 +1065,7 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
   }
 
   .front-store-promos {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
 
@@ -1024,7 +1133,7 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
   }
 
   .front-store-promos {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 9px;
   }
 
@@ -1111,6 +1220,18 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
     width: 40px;
   }
 
+  .front-store-account-trigger {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    border-radius: 13px;
+  }
+
+  .front-store-account-cat-wrap {
+    width: 40px;
+    height: 40px;
+  }
+
   .front-store-category-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1121,7 +1242,22 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
   }
 }
 
+@keyframes front-store-cat-idle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-3px) rotate(-2deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .front-store-account-cat {
+    animation: none;
+  }
+
   .front-store-category-card,
   .front-store-promo-card,
   .front-store-login {

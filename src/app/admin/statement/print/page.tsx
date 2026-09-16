@@ -16,7 +16,11 @@ import {
   type TopupStatementSourceFilter,
 } from "@/lib/topup/statement";
 import { normalizeTopupReportDate } from "@/lib/topup/report-time";
-import { SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
+import {
+  resolveSiteBrandLogo,
+  SITE_BRAND_LOGO_HEIGHT,
+  SITE_BRAND_LOGO_WIDTH,
+} from "@/lib/site-branding";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +91,7 @@ export default async function TopupStatementPrintPage({
   const user = await requireSuperAdmin();
   if (getSiteId() !== "main") redirect("/");
   const publicSettings = await loadLayoutPublicSettings();
-  const siteLogoUrl = publicSettings.site_logo_url?.trim() || SITE_BRAND_LOGO_PATH;
+  const siteLogoUrl = resolveSiteBrandLogo(publicSettings.site_logo_url);
   const params = await searchParams;
   const rawStartDate = firstParam(params.startDate);
   const rawEndDate = firstParam(params.endDate);
@@ -160,8 +164,8 @@ export default async function TopupStatementPrintPage({
               src={siteLogoUrl}
               alt="โลโก้เว็บไซต์"
               data-statement-site-logo
-              width={256}
-              height={64}
+              width={SITE_BRAND_LOGO_WIDTH}
+              height={SITE_BRAND_LOGO_HEIGHT}
               priority
               unoptimized
               className="h-14 w-auto max-w-[14rem] shrink-0 object-contain object-left sm:h-16"

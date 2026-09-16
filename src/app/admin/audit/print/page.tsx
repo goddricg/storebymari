@@ -9,7 +9,11 @@ import { getAdminDailyWorkReport } from "@/lib/audit/admin-audit-daily-report";
 import { getSiteId } from "@/lib/site";
 import { loadLayoutPublicSettings } from "@/lib/settings/load-layout-public-settings";
 import { getDateOnlyInTopupTimeZone, normalizeTopupReportDate } from "@/lib/topup/report-time";
-import { SITE_BRAND_LOGO_PATH } from "@/lib/site-branding";
+import {
+  resolveSiteBrandLogo,
+  SITE_BRAND_LOGO_HEIGHT,
+  SITE_BRAND_LOGO_WIDTH,
+} from "@/lib/site-branding";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +45,7 @@ export default async function AdminAuditPrintPage({
   if (getSiteId() !== "main") redirect("/");
 
   const publicSettings = await loadLayoutPublicSettings();
-  const siteLogoUrl = publicSettings.site_logo_url?.trim() || SITE_BRAND_LOGO_PATH;
+  const siteLogoUrl = resolveSiteBrandLogo(publicSettings.site_logo_url);
 
   const params = await searchParams;
   const today = getDateOnlyInTopupTimeZone();
@@ -107,8 +111,8 @@ export default async function AdminAuditPrintPage({
             <Image
               src={siteLogoUrl}
               alt="โลโก้เว็บไซต์"
-              width={256}
-              height={64}
+              width={SITE_BRAND_LOGO_WIDTH}
+              height={SITE_BRAND_LOGO_HEIGHT}
               priority
               unoptimized
               className="h-14 w-auto max-w-[14rem] shrink-0 object-contain object-left sm:h-16"

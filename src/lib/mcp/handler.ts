@@ -142,7 +142,7 @@ export async function verifyMcpAuth(req: Request): Promise<boolean> {
   // Fallback: Check if current cookie session is admin
   try {
     const user = await getCurrentUser();
-    if (user && (user.email?.toLowerCase() === "zeriessand@gmail.com" || isAdminUser(user))) {
+    if (user && isAdminUser(user)) {
       return true;
     }
   } catch {}
@@ -181,7 +181,7 @@ export async function executeMcpTool(
           target,
           siteId,
           senderName: "Mimi (Gemini Spark AI)",
-          senderEmail: "zeriessand@gmail.com",
+          senderEmail: null,
         });
 
         const sent = result.dispatchResult.sent;

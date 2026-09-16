@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { requireAdmin } from "@/lib/auth/server";
+import { getCurrentUser } from "@/lib/auth/server";
 import { isSuperAdminUser } from "@/lib/auth/roles";
+import {
+  canAccessAdminSettings,
+  isMainSiteOnlySettingKey,
+} from "@/lib/auth/access-policies";
 import { getSiteId } from "@/lib/site";
 import { getAllSettings, updateSetting, invalidateSettingsCache } from "@/lib/settings/repository";
 import {
@@ -20,39 +24,71 @@ const updateSettingsSchema = z.object({
   settings: z.record(z.string(), z.string().nullable()),
 });
 
+function noStoreJson(body: unknown, status = 200) {
+  const response = NextResponse.json(body, { status });
+  response.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  return response;
+}
+
 export async function GET() {
   try {
-    await requireAdmin();
+    const me = await getCurrentUser();
+    const siteId = getSiteId();
+
+    if (!me) {
+      return noStoreJson({ message: "Unauthorized" }, 401);
+    }
+    if (!canAccessAdminSettings(siteId, me)) {
+      return noStoreJson(
+        { message: "Forbidden" },
+        403,
+      );
+    }
 
     const settings = await getAllSettings();
+    const visibleSettings =
+      siteId === "main"
+        ? settings
+        : settings.filter((setting) => !isMainSiteOnlySettingKey(setting.key));
 
-    return NextResponse.json({ settings });
+    return noStoreJson({ settings: visibleSettings });
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : "ไม่สามารถอ่านการตั้งค่าได้";
 
-    return NextResponse.json({ message }, { status: 500 });
+    return noStoreJson({ message }, 500);
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const me = await requireAdmin();
+    const me = await getCurrentUser();
+    const siteId = getSiteId();
+
+    if (!me) {
+      return noStoreJson({ message: "Unauthorized" }, 401);
+    }
+    if (!canAccessAdminSettings(siteId, me)) {
+      return noStoreJson(
+        { message: "Forbidden" },
+        403,
+      );
+    }
 
     if (process.env.NODE_ENV === "development" && process.env.APP_THEME_PREVIEW_PACK) {
-      return NextResponse.json(
+      return noStoreJson(
         { message: "Local Theme Preview เป็นโหมดอ่านอย่างเดียว ไม่เขียนค่าไปยัง Production" },
-        { status: 409 },
+        409,
       );
     }
 
     const contentType = request.headers.get("content-type") ?? "";
     if (!contentType.includes("application/json")) {
-      return NextResponse.json(
+      return noStoreJson(
         { message: "รูปแบบข้อมูลไม่ถูกต้อง" },
-        { status: 415 }
+        415,
       );
     }
 
@@ -60,33 +96,43 @@ export async function PATCH(request: NextRequest) {
     try {
       rawBody = await request.json();
     } catch {
-      return NextResponse.json(
+      return noStoreJson(
         { message: "ไม่สามารถอ่านข้อมูลจากคำขอได้" },
-        { status: 400 }
+        400,
       );
     }
 
     const parsed = updateSettingsSchema.safeParse(rawBody);
     if (!parsed.success) {
-      return NextResponse.json(
+      return noStoreJson(
         {
           message: "ข้อมูลไม่ถูกต้อง",
           errors: parsed.error.issues,
         },
-        { status: 400 }
+        400,
       );
     }
 
     const { settings } = parsed.data;
+    const forbiddenSetting = Object.keys(settings).find(
+      (key) => siteId !== "main" && isMainSiteOnlySettingKey(key),
+    );
+    if (forbiddenSetting) {
+      return noStoreJson(
+        { message: "การตั้งค่านี้จัดการได้เฉพาะบนเว็บไซต์หลักโดย SuperAdmin เท่านั้น" },
+        403,
+      );
+    }
+
     const requestedThemeSettings = Object.entries(settings).filter(([key]) =>
       key.startsWith("site_theme_"),
     );
 
     if (requestedThemeSettings.length > 0) {
-      if (getSiteId() !== "main" || !isSuperAdminUser(me)) {
-        return NextResponse.json(
+      if (siteId !== "main" || !isSuperAdminUser(me)) {
+        return noStoreJson(
           { message: "เฉพาะ SuperAdmin ของ storebymari.com เท่านั้นที่จัดการ Theme ได้" },
-          { status: 403 },
+          403,
         );
       }
 
@@ -94,9 +140,9 @@ export async function PATCH(request: NextRequest) {
         !isThemeSettingKey(key) || !canUseThemeSettingValue(key, value),
       );
       if (invalidThemeSetting) {
-        return NextResponse.json(
+        return noStoreJson(
           { message: "ค่า Theme ไม่ถูกต้อง" },
-          { status: 400 },
+          400,
         );
       }
     }
@@ -161,7 +207,7 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    return noStoreJson({
       success: true,
       updated,
       message: `อัปเดตการตั้งค่า ${updated.length} รายการเรียบร้อย`,
@@ -172,7 +218,7 @@ export async function PATCH(request: NextRequest) {
         ? error.message
         : "ไม่สามารถอัปเดตการตั้งค่าได้";
 
-    return NextResponse.json({ message }, { status: 500 });
+    return noStoreJson({ message }, 500);
   }
 }
 

@@ -1,7 +1,7 @@
 import { getSiteId } from "./site";
 
 export const MAIN_SITE_BROWSER_TITLE =
-  "👑 App By Mari | ศูนย์รวม Account Premium ราคาถูก Netflix • YouTube • Spotify • Canva";
+  "✨ Store By Mari ✨ แอปพรีเมียมราคาถูก | Netflix • YouTube • Spotify – Etc.";
 
 export type SiteConfig = {
   siteId: string;

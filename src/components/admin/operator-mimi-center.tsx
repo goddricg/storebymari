@@ -983,8 +983,8 @@ export default function OperatorMimiCenter() {
                 <div className="rounded-2xl bg-white/95 dark:bg-[#251833]/95 p-3.5 shadow-lg backdrop-blur border border-white/20 text-foreground transition-all">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-md overflow-hidden bg-primary/20 shrink-0">
-                        <img src="/pwa-app-icon-192.png" alt="App" className="w-full h-full object-cover" />
+                  <div className="w-5 h-5 rounded-md overflow-hidden bg-primary/20 shrink-0">
+                    <img src="/pwa-app-icon-192.png?v=20260916" alt="Store by Mari" className="w-full h-full object-cover" />
                       </div>
                       <span className="text-xs font-bold tracking-tight text-foreground/80">Appbymari</span>
                       <span className="text-[10px] text-muted-foreground">• ตอนนี้</span>

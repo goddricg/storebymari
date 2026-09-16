@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/server";
+import { isAdminUser } from "@/lib/auth/roles";
 import { getSiteId } from "@/lib/site";
 import {
   clearProductStock,
@@ -20,10 +21,7 @@ const clearStockSchema = z.object({
 });
 
 function isAdmin(user: Awaited<ReturnType<typeof getCurrentUser>>): boolean {
-  return Boolean(
-    user &&
-      (user.role === "superadmin" || user.role === "admin" || user.isAdmin),
-  );
+  return isAdminUser(user);
 }
 
 function noStoreJson(body: unknown, init?: ResponseInit): NextResponse {

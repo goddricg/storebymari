@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/server";
+import { isAdminUser } from "@/lib/auth/roles";
+import { getSiteId } from "@/lib/site";
 import {
   getAllCategoriesIncludingInactive,
   createCategory,
   updateCategory,
   deleteCategory,
   getCategoryById,
+  type CategoryScope,
 } from "@/lib/categories/repository";
 import { sendAdminAuditWebhook } from "@/lib/discord/admin-audit";
 import {
@@ -30,15 +34,89 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export async function GET() {
+type CategoryScopeResolution =
+  | { scope: CategoryScope; response?: never }
+  | { response: NextResponse; scope?: never };
+
+function resolveCategoryScope(
+  request: Request,
+  mutation: boolean,
+): CategoryScopeResolution {
+  try {
+    const rawIsLocal = new URL(request.url).searchParams.get("isLocal");
+    if (rawIsLocal !== null && rawIsLocal !== "true" && rawIsLocal !== "false") {
+      return {
+        response: NextResponse.json(
+          { message: "ค่า isLocal ไม่ถูกต้อง" },
+          { status: 422 },
+        ),
+      };
+    }
+
+    const siteId = getSiteId();
+    if (!siteId) {
+      return {
+        response: NextResponse.json(
+          { message: "ไม่พบ site id สำหรับกำหนดขอบเขตหมวดหมู่" },
+          { status: 500 },
+        ),
+      };
+    }
+
+    const scope: CategoryScope = {
+      siteId,
+      isLocal: rawIsLocal === "true",
+    };
+
+    // Child Admin operations must be explicitly local. This prevents a
+    // direct caller from using the global read scope to mutate shared data.
+    if (mutation && siteId !== "main" && !scope.isLocal) {
+      return {
+        response: NextResponse.json(
+          { message: "เว็บลูกสามารถจัดการได้เฉพาะหมวดหมู่ local ของเว็บตัวเอง" },
+          { status: 403 },
+        ),
+      };
+    }
+
+    return { scope };
+  } catch (error) {
+    console.error("Category scope resolution failed:", error);
+    return {
+      response: NextResponse.json(
+        { message: "ไม่สามารถกำหนดขอบเขตหมวดหมู่ได้" },
+        { status: 500 },
+      ),
+    };
+  }
+}
+
+function invalidatePublicCategoryCaches() {
+  try {
+    revalidatePath("/");
+    revalidatePath("/products");
+    revalidatePath("/api/products");
+    revalidateTag("products", { expire: 0 });
+    revalidateTag("categories", { expire: 0 });
+  } catch (error) {
+    // A successful database mutation must not be reported as failed only
+    // because a deployment does not expose the cache invalidation context.
+    console.warn("Public category cache invalidation failed:", error);
+  }
+}
+
+export async function GET(request: NextRequest) {
   const me = await getCurrentUser();
-  const isAdmin = me?.role === 'superadmin' || me?.role === 'admin' || me?.isAdmin;
+  const isAdmin = isAdminUser(me);
   if (!me || !isAdmin) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
   try {
-    const categories = await getAllCategoriesIncludingInactive();
+    const resolved = resolveCategoryScope(request, false);
+    if (resolved.response) return resolved.response;
+
+    const categories = await getAllCategoriesIncludingInactive(resolved.scope);
     return NextResponse.json({ categories });
   } catch (error) {
     const message = error instanceof Error ? error.message : "ไม่สามารถโหลดหมวดหมู่ได้";
@@ -48,12 +126,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const me = await getCurrentUser();
-  const isAdmin = me?.role === 'superadmin' || me?.role === 'admin' || me?.isAdmin;
+  const isAdmin = isAdminUser(me);
   if (!me || !isAdmin) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
   try {
+    const resolved = resolveCategoryScope(request, true);
+    if (resolved.response) return resolved.response;
+
     const body = await request.json();
     const parsed = createSchema.safeParse(body);
 
@@ -69,8 +150,12 @@ export async function POST(request: Request) {
       parsed.data.description ?? null,
       parsed.data.imageUrl ?? null,
       parsed.data.displayOrder ?? 0,
-      parsed.data.isActive ?? true
+      parsed.data.isActive ?? true,
+      resolved.scope.siteId,
+      resolved.scope.isLocal,
     );
+
+    invalidatePublicCategoryCaches();
 
     await recordAdminAuditEvent({
       actor: me,
@@ -105,12 +190,15 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const me = await getCurrentUser();
-  const isAdmin = me?.role === 'superadmin' || me?.role === 'admin' || me?.isAdmin;
+  const isAdmin = isAdminUser(me);
   if (!me || !isAdmin) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
   try {
+    const resolved = resolveCategoryScope(request, true);
+    if (resolved.response) return resolved.response;
+
     const body = await request.json();
     const { id, ...updates } = body;
 
@@ -127,7 +215,7 @@ export async function PATCH(request: Request) {
     }
 
     // Get current category for audit
-    const currentCategory = await getCategoryById(id);
+    const currentCategory = await getCategoryById(id, resolved.scope);
     if (!currentCategory) {
       return NextResponse.json({ message: "ไม่พบหมวดหมู่" }, { status: 404 });
     }
@@ -146,7 +234,9 @@ export async function PATCH(request: Request) {
     if (parsed.data.displayOrder !== undefined) updatePayload.displayOrder = parsed.data.displayOrder;
     if (parsed.data.isActive !== undefined) updatePayload.isActive = parsed.data.isActive;
 
-    const category = await updateCategory(id, updatePayload);
+    const category = await updateCategory(id, updatePayload, resolved.scope);
+
+    invalidatePublicCategoryCaches();
 
     // Send audit webhook
     const changes: Record<string, { old: string | number | null; new: string | number | null }> = {};
@@ -198,12 +288,15 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: NextRequest) {
   const me = await getCurrentUser();
-  const isAdmin = me?.role === 'superadmin' || me?.role === 'admin' || me?.isAdmin;
+  const isAdmin = isAdminUser(me);
   if (!me || !isAdmin) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
   try {
+    const resolved = resolveCategoryScope(request, true);
+    if (resolved.response) return resolved.response;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -212,12 +305,14 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Get category for audit
-    const category = await getCategoryById(id);
+    const category = await getCategoryById(id, resolved.scope);
     if (!category) {
       return NextResponse.json({ message: "ไม่พบหมวดหมู่" }, { status: 404 });
     }
 
-    await deleteCategory(id);
+    await deleteCategory(id, resolved.scope);
+
+    invalidatePublicCategoryCaches();
 
     await recordAdminAuditEvent({
       actor: me,

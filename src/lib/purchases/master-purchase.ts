@@ -6,6 +6,7 @@ import type {
 } from "mysql2/promise";
 import pool from "@/lib/mysql";
 import type { ValidatedApiKey } from "@/lib/auth/api-key";
+import { isAdminRole } from "@/lib/auth/roles";
 import { getApiProviderById } from "@/lib/api-providers/repository";
 import { buyExternalProduct } from "@/lib/products/external";
 import {
@@ -160,8 +161,7 @@ function roundCurrency(value: number): number {
 
 function purchaseUnitPrice(product: ProductRow, user: UserRow): number {
   const isAdmin =
-    user.role === "admin" ||
-    user.role === "superadmin" ||
+    isAdminRole(user.role) ||
     user.is_admin === 1 ||
     user.is_admin === true;
   const rawPrice = isAdmin

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/server";
+import { isAdminUser } from "@/lib/auth/roles";
 import { getConfiguredEmailRecipient, sendSystemEmail } from "@/lib/email/mailer";
 import { sendRestockAlertEmail } from "@/lib/email/restock-alert";
 
 export async function POST(request: Request) {
   try {
     const me = await getCurrentUser();
-    const isAdmin = me?.role === "superadmin" || me?.role === "admin" || me?.isAdmin;
+    const isAdmin = isAdminUser(me);
     if (!me || !isAdmin) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }

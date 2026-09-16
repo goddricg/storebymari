@@ -228,10 +228,8 @@ export function PurchaseProductButton({
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       };
-      if (selectedPurchaseOption) {
-        idempotencyKeyRef.current ??= crypto.randomUUID();
-        headers["Idempotency-Key"] = idempotencyKeyRef.current;
-      }
+      idempotencyKeyRef.current ??= crypto.randomUUID();
+      headers["Idempotency-Key"] = idempotencyKeyRef.current;
 
       const response = await fetch("/api/orders/buy", {
         method: "POST",
@@ -245,6 +243,9 @@ export function PurchaseProductButton({
       });
 
       if (!response.ok) {
+        if (response.status !== 202 && response.status < 500) {
+          idempotencyKeyRef.current = null;
+        }
         const errorPayload = await response.json().catch(() => ({}));
         const message =
           typeof errorPayload?.message === "string"
