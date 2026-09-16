@@ -774,9 +774,18 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
   color: #fff1fb;
   font-size: 13px;
   font-weight: 700;
+  font-family: inherit;
   line-height: 1.25;
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
   transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.front-store-hamburger-menu-item[data-tone="accent"] {
+  border-color: rgb(255 159 218 / 46%);
+  background: linear-gradient(145deg, rgb(232 24 128 / 26%), rgb(113 51 185 / 22%));
+  color: #ffd6ed;
 }
 
 .front-store-hamburger-menu-item:hover,

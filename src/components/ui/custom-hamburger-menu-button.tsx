@@ -16,9 +16,11 @@ import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
 
 export type CustomHamburgerMenuItem = {
-  href: string;
+  href?: string;
   label: string;
   Icon: LucideIcon;
+  onSelect?: () => void;
+  tone?: "accent" | "default";
 };
 
 export type CustomHamburgerMenuButtonProps = {
@@ -200,20 +202,45 @@ export default function CustomHamburgerMenuButton({
                   <span className="front-store-hamburger-panel-title">เมนูหลัก</span>
                 </div>
                 <div className="front-store-hamburger-grid">
-                  {items.map(({ href, label, Icon }) => (
-                    <Link
-                      href={href}
-                      key={label}
-                      role="menuitem"
-                      className="front-store-hamburger-menu-item"
-                      onClick={closeMenu}
-                    >
-                      <span className="front-store-hamburger-menu-icon" aria-hidden="true">
-                        <Icon />
-                      </span>
-                      <span>{label}</span>
-                    </Link>
-                  ))}
+                  {items.map(({ href, label, Icon, onSelect, tone = "default" }) => {
+                    const itemClassName = "front-store-hamburger-menu-item";
+                    const itemContent = (
+                      <>
+                        <span className="front-store-hamburger-menu-icon" aria-hidden="true">
+                          <Icon />
+                        </span>
+                        <span>{label}</span>
+                      </>
+                    );
+                    const handleSelect = () => {
+                      onSelect?.();
+                      closeMenu();
+                    };
+
+                    return href ? (
+                      <Link
+                        href={href}
+                        key={`${href}-${label}`}
+                        role="menuitem"
+                        data-tone={tone}
+                        className={itemClassName}
+                        onClick={handleSelect}
+                      >
+                        {itemContent}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        key={`action-${label}`}
+                        role="menuitem"
+                        data-tone={tone}
+                        className={itemClassName}
+                        onClick={handleSelect}
+                      >
+                        {itemContent}
+                      </button>
+                    );
+                  })}
                   {renderAdditionalItems?.(closeMenu)}
                 </div>
               </div>
