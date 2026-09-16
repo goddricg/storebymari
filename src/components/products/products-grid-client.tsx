@@ -614,7 +614,7 @@ export default function ProductsGridClient({
               </div>
               <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm text-[#0B0B0B]">
+                  <p className="text-sm !text-[#0B0B0B]">
                     แสดง <span className="font-medium text-[#0B0B0B]">{((currentPage - 1) * itemsPerPage) + 1}</span> ถึง{' '}
                     <span className="font-medium text-[#0B0B0B]">
                       {Math.min(currentPage * itemsPerPage, total)}
