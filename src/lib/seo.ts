@@ -12,6 +12,24 @@ export function productPath(typeId: string) {
   return `/products/${encodeURIComponent(typeId)}`;
 }
 
+/**
+ * Next route params can arrive either decoded or as the encoded path segment
+ * emitted by productPath. Normalize both forms before resolving a product.
+ */
+export function decodeProductPathSegment(pathSegment: string) {
+  let value = pathSegment;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const decoded = decodeURIComponent(value);
+      if (decoded === value) break;
+      value = decoded;
+    } catch {
+      break;
+    }
+  }
+  return value;
+}
+
 export function pageMetadata(title: string, description: string, path: string, noindex = false): Metadata {
   const { siteName } = getSiteConfig();
   return {

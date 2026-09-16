@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { absoluteUrl, catalogPath, pageMetadata, parseCatalogQuery, productPath, serializeJsonLd } from "../src/lib/seo";
+import { absoluteUrl, catalogPath, decodeProductPathSegment, pageMetadata, parseCatalogQuery, productPath, serializeJsonLd } from "../src/lib/seo";
 import { productStructuredData } from "../src/lib/products/seo";
 import type { PublicStorefrontProduct } from "../src/lib/products/public-product";
 import { getSiteConfig } from "../src/lib/site-config";
@@ -39,6 +39,8 @@ test("product URLs safely encode reserved characters and Thai names", () => {
   const path = productPath(product.typeId);
   assert.equal(path.split("/").length, 3);
   assert.equal(decodeURIComponent(path.slice("/products/".length)), product.typeId);
+  assert.equal(decodeProductPathSegment(path.slice("/products/".length)), product.typeId);
+  assert.equal(decodeProductPathSegment(product.typeId), product.typeId);
 });
 
 test("catalogue URLs preserve page and filters with bounded input", () => {

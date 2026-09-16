@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { cache } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { findProductByTypeId } from "@/lib/products/repository";
 import { toPublicStorefrontProduct } from "@/lib/products/public-product";
 import { productStructuredData } from "@/lib/products/seo";
-import { pageMetadata, productPath } from "@/lib/seo";
+import { decodeProductPathSegment, pageMetadata, productPath } from "@/lib/seo";
 import { BreadcrumbJsonLd, JsonLd } from "@/components/seo/json-ld";
 import { StoreGuideLinks } from "@/components/seo/store-guide-links";
 import { PurchaseProductButton } from "@/components/orders/purchase-product-button";
@@ -15,14 +14,14 @@ import { normalizeNewlines } from "@/lib/utils";
 
 type PageProps = { params: Promise<{ typeId: string }> };
 // One request-scoped read for metadata and content, never a shared user cache.
-const getPublishedProduct = cache(async (typeId: string) => {
-  const product = await findProductByTypeId(typeId);
-  if (!product || !product.isPublished) notFound();
-  return toPublicStorefrontProduct(product);
-});
+async function getPublishedProduct(pathSegment: string) {
+  const product = await findProductByTypeId(decodeProductPathSegment(pathSegment));
+  return product && product.isPublished ? toPublicStorefrontProduct(product) : null;
+}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const product = await getPublishedProduct((await params).typeId);
+  if (!product) return pageMetadata("ไม่พบสินค้า", "ไม่พบสินค้าที่ต้องการดู กรุณากลับไปเลือกสินค้าจากแคตตาล็อก StoreByMari", "/products", true);
   const description = `${product.name} — ${normalizeNewlines(product.details ?? "ดูราคา สต็อก และเงื่อนไขก่อนสั่งซื้อกับ StoreByMari").replace(/\s+/g, " ")}`.slice(0, 180);
   const metadata = pageMetadata(product.name, description, productPath(product.typeId));
   const image = product.imageUrl || product.typeImageUrl;
@@ -35,6 +34,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductPage({ params }: PageProps) {
   const product = await getPublishedProduct((await params).typeId);
+  if (!product) notFound();
   const image = product.imageUrl || product.typeImageUrl;
   const hasStock = (product.stock ?? 0) > 0;
   return <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
