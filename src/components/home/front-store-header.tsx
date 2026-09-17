@@ -14,17 +14,15 @@ import {
   Home,
   History,
   LogOut,
+  SearchCheck,
   ShieldCheck,
   ShoppingBag,
   ShoppingCart,
-  Tag,
-  UserRound,
 } from "lucide-react";
 import { useCart } from "@/components/cart/cart-provider";
 import CustomerNotificationBell from "@/components/notifications/customer-notification-bell";
 import SupportNotificationBell from "@/components/admin/support-notification-bell";
 import LoginForm from "@/components/auth/login-form";
-import CustomHamburgerMenuButton from "@/components/ui/custom-hamburger-menu-button";
 import {
   resolveSiteBrandLogo,
   SITE_BRAND_LOGO_HEIGHT,
@@ -52,7 +50,7 @@ import { usePublicSettings } from "@/components/public-settings-provider";
 const primaryLinks = [
   { href: "/", label: "หน้าแรก", Icon: Home },
   { href: "/products", label: "สินค้า", Icon: ShoppingBag },
-  { href: "#promotions", label: "โปรโมชั่น", Icon: Tag },
+  { href: "/support/check", label: "เช็คเลขเคส", Icon: SearchCheck },
   { href: "/support/report", label: "แจ้งปัญหา", Icon: AlertCircle },
   { href: "#support", label: "ติดต่อเรา", Icon: Headphones },
 ] as const;
@@ -60,7 +58,6 @@ const primaryLinks = [
 const ACCOUNT_CAT_ICON_PATH = "/front-store/storebymari-black-cat-account.png";
 
 export default function FrontStoreHeader() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [accountMenuAnimating, setAccountMenuAnimating] = useState(false);
@@ -86,8 +83,6 @@ export default function FrontStoreHeader() {
   }, []);
 
   const handleAccountMenuOpenChange = (open: boolean) => {
-    if (!user) return;
-
     if (accountMenuTimerRef.current !== null) {
       window.clearTimeout(accountMenuTimerRef.current);
       accountMenuTimerRef.current = null;
@@ -174,17 +169,13 @@ export default function FrontStoreHeader() {
     return () => window.removeEventListener("auth:session-changed", handleAuthChange);
   }, [refreshSession]);
 
-  const accountTrigger = (expanded: boolean, popup: "menu" | "dialog") => (
+  const accountTrigger = (expanded: boolean) => (
     <button
       type="button"
       className="front-store-login front-store-account-trigger"
       aria-label={user ? "เปิดเมนูบัญชีผู้ใช้" : "เปิดเมนูเข้าสู่ระบบ"}
-      aria-haspopup={popup}
+      aria-haspopup="menu"
       aria-expanded={expanded}
-      onClick={() => {
-        setMenuOpen(false);
-        if (!user) setLoginOpen(true);
-      }}
     >
       <span className="front-store-account-cat-wrap" aria-hidden="true">
         <Image
@@ -240,22 +231,24 @@ export default function FrontStoreHeader() {
             )}
           </div>
 
-          {user ? (
-            <DropdownMenu open={accountMenuOpen} onOpenChange={handleAccountMenuOpenChange}>
-              <DropdownMenuTrigger asChild>
-                {accountTrigger(accountMenuOpen, "menu")}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                sideOffset={10}
-                className="front-store-account-popover min-w-[280px] border-[#f47fbe]/70 bg-[#160d1d]/[.98] p-2 text-white shadow-[0_18px_50px_rgba(0,0,0,.48),0_0_24px_rgba(255,40,157,.22)]"
-              >
-                <DropdownMenuLabel className="front-store-account-summary px-3 py-2">
-                  <div className="flex flex-col gap-1">
-                    <span className="truncate text-sm font-bold text-white">
-                      {user.displayName ?? user.email}
-                    </span>
-                    <span className="truncate text-xs text-[#f7c9e5]">{user.email}</span>
+          <DropdownMenu open={accountMenuOpen} onOpenChange={handleAccountMenuOpenChange}>
+            <DropdownMenuTrigger asChild>
+              {accountTrigger(accountMenuOpen)}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={10}
+              className="front-store-account-popover min-w-[280px] border-[#f47fbe]/70 bg-[#160d1d]/[.98] p-2 text-white shadow-[0_18px_50px_rgba(0,0,0,.48),0_0_24px_rgba(255,40,157,.22)]"
+            >
+              <DropdownMenuLabel className="front-store-account-summary px-3 py-2">
+                <div className="flex flex-col gap-1">
+                  <span className="truncate text-sm font-bold text-white">
+                    {user ? (user.displayName ?? user.email) : siteName}
+                  </span>
+                  <span className="truncate text-xs text-[#f7c9e5]">
+                    {user ? user.email : "เมนูหลักและการเข้าสู่ระบบ"}
+                  </span>
+                  {user ? (
                     <span className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-[#ffd36b]">
                       <Coins className="size-4" aria-hidden="true" />
                       {user.points.toLocaleString(undefined, {
@@ -263,107 +256,88 @@ export default function FrontStoreHeader() {
                         maximumFractionDigits: 2,
                       })} พ้อยท์
                     </span>
-                    {canViewMasterPoint ? (
-                      <div className="mt-2 rounded-lg border border-[#f47fbe]/25 bg-black/20 px-2.5 py-2" aria-live="polite">
-                        <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-[#f7c9e5]">
-                          <span className="inline-flex items-center gap-1.5"><Coins className="size-3.5 text-[#ffd36b]" aria-hidden="true" />Master Point</span>
-                          <span className={masterPointStatus === "ready" ? "text-emerald-300" : masterPointStatus === "error" ? "text-rose-300" : "text-[#f7c9e5]"}>
-                            {masterPointStatus === "ready" ? "ออนไลน์" : masterPointStatus === "error" ? "เชื่อมต่อไม่ได้" : "กำลังตรวจสอบ"}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-sm font-bold text-[#ffd36b]">
-                          {masterPointStatus === "ready" && masterPoint !== null
-                            ? `${masterPoint.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} พ้อยท์`
-                            : masterPointStatus === "error" ? "ไม่สามารถดึงยอดล่าสุดได้" : "กำลังดึงยอดล่าสุด..."}
-                        </p>
-                        <p className="mt-1 text-[10px] font-normal text-[#f7c9e5]">อัปเดตอัตโนมัติทุก 15 วินาที</p>
+                  ) : null}
+                  {canViewMasterPoint ? (
+                    <div className="mt-2 rounded-lg border border-[#f47fbe]/25 bg-black/20 px-2.5 py-2" aria-live="polite">
+                      <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-[#f7c9e5]">
+                        <span className="inline-flex items-center gap-1.5"><Coins className="size-3.5 text-[#ffd36b]" aria-hidden="true" />Master Point</span>
+                        <span className={masterPointStatus === "ready" ? "text-emerald-300" : masterPointStatus === "error" ? "text-rose-300" : "text-[#f7c9e5]"}>
+                          {masterPointStatus === "ready" ? "ออนไลน์" : masterPointStatus === "error" ? "เชื่อมต่อไม่ได้" : "กำลังตรวจสอบ"}
+                        </span>
                       </div>
-                    ) : null}
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-[#f47fbe]/25" />
-                <DropdownMenuItem asChild className="front-store-account-menu-item">
-                  <Link href={accountHref}>
-                    {isAdmin ? <ShieldCheck aria-hidden="true" /> : <Home aria-hidden="true" />}
-                    <span>{isAdmin ? "ไปหน้า Admin" : "แดชบอร์ด"}</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="front-store-account-menu-item">
-                  <Link href="/dashboard/orders">
-                    <History aria-hidden="true" />
-                    <span>ประวัติสั่งซื้อ</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="front-store-account-menu-item">
-                  <Link href="/dashboard/topup">
-                    <Coins aria-hidden="true" />
-                    <span>เติมพ้อยท์</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="front-store-account-menu-item">
-                  <Link href="/dashboard/topup/history">
-                    <FileText aria-hidden="true" />
-                    <span>ประวัติการเติมเงิน</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="front-store-account-menu-item">
-                  <Link href="/support/report">
-                    <AlertCircle aria-hidden="true" />
-                    <span>แจ้งปัญหา</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-[#f47fbe]/25" />
-                <DropdownMenuItem
-                  className="front-store-account-menu-item front-store-account-logout"
-                  onClick={() => void handleLogout()}
-                >
-                  <LogOut aria-hidden="true" />
-                  <span>ออกจากระบบ</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            accountTrigger(loginOpen, "dialog")
-          )}
+                      <p className="mt-1 text-sm font-bold text-[#ffd36b]">
+                        {masterPointStatus === "ready" && masterPoint !== null
+                          ? `${masterPoint.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} พ้อยท์`
+                          : masterPointStatus === "error" ? "ไม่สามารถดึงยอดล่าสุดได้" : "กำลังดึงยอดล่าสุด..."}
+                      </p>
+                      <p className="mt-1 text-[10px] font-normal text-[#f7c9e5]">อัปเดตอัตโนมัติทุก 15 วินาที</p>
+                    </div>
+                  ) : null}
+                </div>
+              </DropdownMenuLabel>
 
-          <CustomHamburgerMenuButton
-            items={primaryLinks}
-            catImageSrc={ACCOUNT_CAT_ICON_PATH}
-            open={menuOpen}
-            onOpenChange={setMenuOpen}
-            renderAdditionalItems={(closeMenu) => (
-              user ? (
-                <Link
-                  href={accountHref}
-                  role="menuitem"
-                  className="front-store-hamburger-menu-item"
-                  onClick={closeMenu}
-                >
-                  <span className="front-store-hamburger-menu-icon" aria-hidden="true">
-                    {isAdmin ? <ShieldCheck /> : <UserRound />}
-                  </span>
-                  <span>{isAdmin ? "เข้าสู่หน้า Admin" : "บัญชีของฉัน"}</span>
-                </Link>
+              {primaryLinks.map(({ href, label, Icon }) => (
+                <DropdownMenuItem key={`mobile-${label}`} asChild className="front-store-account-mobile-nav-item">
+                  <Link href={href}>
+                    <Icon aria-hidden="true" />
+                    <span>{label}</span>
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator className="front-store-account-mobile-nav-separator bg-[#f47fbe]/25" />
+
+              {user ? (
+                <>
+                  <DropdownMenuItem asChild className="front-store-account-menu-item">
+                    <Link href={accountHref}>
+                      {isAdmin ? <ShieldCheck aria-hidden="true" /> : <Home aria-hidden="true" />}
+                      <span>{isAdmin ? "ไปหน้า Admin" : "แดชบอร์ด"}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="front-store-account-menu-item">
+                    <Link href="/dashboard/orders">
+                      <History aria-hidden="true" />
+                      <span>ประวัติสั่งซื้อ</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="front-store-account-menu-item">
+                    <Link href="/dashboard/topup">
+                      <Coins aria-hidden="true" />
+                      <span>เติมพ้อยท์</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="front-store-account-menu-item">
+                    <Link href="/dashboard/topup/history">
+                      <FileText aria-hidden="true" />
+                      <span>ประวัติการเติมเงิน</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="front-store-account-menu-item">
+                    <Link href="/support/report">
+                      <AlertCircle aria-hidden="true" />
+                      <span>แจ้งปัญหา</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-[#f47fbe]/25" />
+                  <DropdownMenuItem
+                    className="front-store-account-menu-item front-store-account-logout"
+                    onClick={() => void handleLogout()}
+                  >
+                    <LogOut aria-hidden="true" />
+                    <span>ออกจากระบบ</span>
+                  </DropdownMenuItem>
+                </>
               ) : (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="front-store-hamburger-menu-item"
-                  aria-haspopup="dialog"
-                  aria-expanded={loginOpen}
-                  onClick={() => {
-                    closeMenu();
-                    setLoginOpen(true);
-                  }}
+                <DropdownMenuItem
+                  className="front-store-account-menu-item"
+                  onClick={() => setLoginOpen(true)}
                 >
-                  <span className="front-store-hamburger-menu-icon" aria-hidden="true">
-                    <ShieldCheck />
-                  </span>
+                  <ShieldCheck aria-hidden="true" />
                   <span>เข้าสู่ระบบ</span>
-                </button>
-              )
-            )}
-          />
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
