@@ -495,6 +495,11 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
   color: #ff9dcf;
 }
 
+.front-store-account-mobile-nav-item,
+.front-store-account-mobile-nav-separator {
+  display: none;
+}
+
 .front-store-menu-button {
   display: none;
 }
@@ -1302,6 +1307,14 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
   .front-store-header-actions {
     margin-left: auto;
     gap: 4px;
+  }
+
+  .front-store-account-mobile-nav-item {
+    display: flex;
+  }
+
+  .front-store-account-mobile-nav-separator {
+    display: block;
   }
 
   .front-store-icon-link {
