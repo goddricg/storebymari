@@ -198,7 +198,6 @@ export default function CustomHamburgerMenuButton({
             >
               <div className="front-store-hamburger-panel-inner">
                 <div className="front-store-hamburger-panel-heading">
-                  <span className="front-store-hamburger-panel-kicker">QUICK ACCESS // 01</span>
                   <span className="front-store-hamburger-panel-title">เมนูหลัก</span>
                 </div>
                 <div className="front-store-hamburger-grid">
