@@ -21,7 +21,10 @@ export default function FrontStoreHeroGlow() {
     setHasMounted(true);
   }, []);
 
-  const shouldAnimate = hasMounted && prefersReducedMotion === false;
+  // Framer Motion may report `null` briefly (or in environments without a
+  // resolved media-query value). Only disable the effect when the user has
+  // explicitly requested reduced motion.
+  const shouldAnimate = hasMounted && prefersReducedMotion !== true;
 
   return (
     <motion.div
