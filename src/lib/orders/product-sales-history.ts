@@ -45,7 +45,7 @@ type CountRow = RowDataPacket & {
 };
 
 const FALLBACK_STORE_NAMES: Record<string, string> = {
-  main: "Appbymari",
+  main: "Store By Mari",
   child1: "PremiumBySom",
   child2: "JaoBam",
 };
