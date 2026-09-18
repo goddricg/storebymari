@@ -26,7 +26,7 @@ export const MCP_TOOLS = [
   {
     name: "broadcast_push_notification",
     description:
-      "Send a live Web Push notification to mobile phones and desktop browsers of Appbymari users/customers. Use this whenever the admin or Mimi wants to notify users about new restocks, promotions, announcements, or discounts.",
+      "Send a live Web Push notification to mobile phones and desktop browsers of Store By Mari users/customers. Use this whenever the admin or Mimi wants to notify users about new restocks, promotions, announcements, or discounts.",
     inputSchema: {
       type: "object",
       properties: {
@@ -54,7 +54,7 @@ export const MCP_TOOLS = [
   {
     name: "get_stock_summary",
     description:
-      "Check current real-time stock levels, pricing, and availability of products listed on the Appbymari store.",
+      "Check current real-time stock levels, pricing, and availability of products listed on the Store By Mari store.",
     inputSchema: {
       type: "object",
       properties: {
@@ -96,7 +96,7 @@ export const MCP_TOOLS = [
   {
     name: "get_shop_stats",
     description:
-      "Get a quick operational summary of Appbymari: total active products, available stock in inventory, and registered mobile push notification subscribers.",
+      "Get a quick operational summary of Store By Mari: total active products, available stock in inventory, and registered mobile push notification subscribers.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -233,7 +233,7 @@ export async function executeMcpTool(
         });
 
         return {
-          text: `📊 ข้อมูลสต็อกสินค้า Appbymari (${products.length}/${total} รายการ):\n\n` +
+          text: `📊 ข้อมูลสต็อกสินค้า Store By Mari (${products.length}/${total} รายการ):\n\n` +
             lines.join("\n"),
         };
       } catch (err: any) {
@@ -309,7 +309,7 @@ export async function executeMcpTool(
         const subStat = subRows[0]?.[0] || { total_subscribers: 0 };
 
         return {
-          text: `🏪 ภาพรวมสถานะร้าน Appbymari:\n\n` +
+          text: `🏪 ภาพรวมสถานะร้าน Store By Mari:\n\n` +
             `• สินค้าที่เปิดขายอยู่: ${prodStat.total_products} รายการ\n` +
             `• สินค้าคงคลังทั้งหมด: ${prodStat.total_stock} ชิ้น\n` +
             `• อุปกรณ์ที่ลงทะเบียนรับ Push Notification: ${subStat.total_subscribers} เครื่อง\n` +
@@ -323,7 +323,7 @@ export async function executeMcpTool(
 
     default:
       return {
-        text: `ไม่พบเครื่องมือ (Tool) ชื่อ "${name}" ในระบบ MCP ของ Appbymari ค่ะ`,
+        text: `ไม่พบเครื่องมือ (Tool) ชื่อ "${name}" ในระบบ MCP ของ Store By Mari ค่ะ`,
         isError: true,
       };
   }
@@ -368,7 +368,7 @@ export async function handleMcpRpcMessage(msg: any): Promise<any> {
             version: MCP_SERVER_VERSION,
           },
           instructions:
-            "You are connected to Appbymari AI Operator (Mimi). You can broadcast Web Push notifications to members, query stock and prices, view restock events, and retrieve store statistics directly.",
+            "You are connected to Store By Mari AI Operator (Mimi). You can broadcast Web Push notifications to members, query stock and prices, view restock events, and retrieve store statistics directly.",
         },
       };
     }
