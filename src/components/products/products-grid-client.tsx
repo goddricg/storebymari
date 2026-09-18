@@ -13,6 +13,7 @@ import { PurchaseProductButton } from '@/components/orders/purchase-product-butt
 import { AddToCartButton } from '@/components/cart/add-to-cart-button'
 import { ProductPriceDisplay } from '@/components/products/product-price-display'
 import { VipBadge } from '@/components/products/vip-badge'
+import { ProductImageLightbox } from '@/components/products/product-image-lightbox'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { subscribeProductStockRealtime } from '@/lib/products/realtime-hub'
@@ -770,14 +771,12 @@ function ProductCardItem({
       data-stock-state={isOutOfStock ? "out-of-stock" : "available"}
     >
       <CardContent data-card-layer="content" className="storefront-product-card-content relative z-10 flex h-full min-h-0 flex-col gap-2.5 p-2.5 text-left sm:gap-3 sm:p-4">
-        <div data-card-layer="image" className="storefront-product-image dreamy-compact-product-media relative z-30 w-full shrink-0 overflow-hidden rounded-xl bg-white">
+        <div data-card-layer="image" className="storefront-product-image dreamy-compact-product-media relative z-30 w-full shrink-0 overflow-hidden rounded-xl bg-transparent">
           {productImageUrl ? (
-            <Image
+            <ProductImageLightbox
               src={productImageUrl}
               alt={product.name}
-              fill
               sizes="(max-width: 1279px) 50vw, 33vw"
-              className="dreamy-image-preserve object-contain p-1.5 sm:p-2"
               onError={() => setFailedImageUrls((previous) => (
                 previous.includes(productImageUrl)
                   ? previous

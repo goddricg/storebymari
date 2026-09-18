@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -11,6 +10,7 @@ import { PurchaseProductButton } from "@/components/orders/purchase-product-butt
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { ProductPriceDisplay } from "@/components/products/product-price-display";
 import { VipBadge } from "@/components/products/vip-badge";
+import { ProductImageLightbox } from "@/components/products/product-image-lightbox";
 import { useLiveProductStock } from "@/components/products/product-stock-realtime-provider";
 import { cn, normalizeNewlines } from "@/lib/utils";
 
@@ -56,13 +56,11 @@ export function FeaturedProductCard({
       data-stock-state={isOutOfStock ? "out-of-stock" : "available"}
     >
       <CardContent data-card-layer="content" className="storefront-product-card-content relative z-10 flex h-full min-h-0 flex-col gap-2.5 p-2.5 text-left sm:gap-3 sm:p-4">
-        <div data-card-layer="image" className="storefront-product-image dreamy-compact-product-media relative z-30 w-full shrink-0 overflow-hidden rounded-xl bg-white">
-          <Image
+        <div data-card-layer="image" className="storefront-product-image dreamy-compact-product-media relative z-30 w-full shrink-0 overflow-hidden rounded-xl bg-transparent">
+          <ProductImageLightbox
             src={logoUrl}
             alt={normalizeNewlines(product.name)}
-            fill
             sizes="(max-width: 1279px) 50vw, 33vw"
-            className="dreamy-image-preserve object-contain p-1.5 sm:p-2"
           />
         </div>
         <div className="storefront-product-card-details flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 sm:gap-2">

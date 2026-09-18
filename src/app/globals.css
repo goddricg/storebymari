@@ -3793,8 +3793,14 @@ body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]
 
 body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
   .storefront-product-card .storefront-product-image {
-  background-color: rgb(255 255 255 / 0.96) !important;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.92), 0 3px 12px rgb(20 0 14 / 0.28);
+  background-color: transparent !important;
+  box-shadow: inset 0 0 0 1px rgb(255 126 201 / 0.3), 0 3px 12px rgb(20 0 14 / 0.28);
+}
+
+body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
+  .storefront-product-card .storefront-product-image img.dreamy-image-preserve {
+  object-fit: cover !important;
+  padding: 0 !important;
 }
 
 body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
