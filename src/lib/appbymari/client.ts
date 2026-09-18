@@ -12,7 +12,7 @@ export class AppByMariApiError extends Error {
   readonly status: number;
   readonly retryable: boolean;
 
-  constructor(status: number, message = "AppByMari API request failed") {
+  constructor(status: number, message = "Store By Mari API request failed") {
     super(message);
     this.name = "AppByMariApiError";
     this.status = status;
@@ -39,7 +39,7 @@ function asText(value: unknown): string | null {
 
 function resolveApiKey(provider: ApiProvider | null, override?: string): string {
   const apiKey = override?.trim() || provider?.apiKey?.trim() || "";
-  if (!apiKey) throw new AppByMariApiError(401, "AppByMari API key is not configured");
+  if (!apiKey) throw new AppByMariApiError(401, "Store By Mari API key is not configured");
   return apiKey;
 }
 
@@ -81,10 +81,10 @@ async function requestJson(
       throw new AppByMariApiError(
         status,
         status === 401 || status === 403
-          ? "AppByMari API key was rejected"
+          ? "Store By Mari API key was rejected"
           : status === 404
-            ? "AppByMari API endpoint was not found"
-            : "AppByMari API request failed",
+            ? "Store By Mari API endpoint was not found"
+            : "Store By Mari API request failed",
       );
     }
 
@@ -94,8 +94,8 @@ async function requestJson(
     throw new AppByMariApiError(
       0,
       error instanceof DOMException && error.name === "AbortError"
-        ? "AppByMari API request timed out"
-        : "AppByMari API is unavailable",
+        ? "Store By Mari API request timed out"
+        : "Store By Mari API is unavailable",
     );
   } finally {
     clearTimeout(timeout);
@@ -141,7 +141,7 @@ export async function fetchAppByMariProducts(input: {
   for (let page = 0; page < 20; page += 1) {
     const result = await requestJson(`products?limit=${limit}&offset=${offset}`, apiKey);
     if (result.body.success !== true || !Array.isArray(result.body.data)) {
-      throw new AppByMariApiError(result.status, "AppByMari product response was invalid");
+      throw new AppByMariApiError(result.status, "Store By Mari product response was invalid");
     }
 
     const pageProducts = result.body.data
@@ -169,7 +169,7 @@ export async function testAppByMariConnection(input: { apiKey: string }): Promis
   const apiKey = resolveApiKey(null, input.apiKey);
   const connection = await requestJson("test-connection", apiKey, { method: "POST" });
   if (connection.body.success !== true) {
-    throw new AppByMariApiError(connection.status, "AppByMari connection was rejected");
+    throw new AppByMariApiError(connection.status, "Store By Mari connection was rejected");
   }
   const products = await fetchAppByMariProducts({ apiKey });
   const tenant = asRecord(connection.body.tenant);
@@ -188,7 +188,7 @@ export async function fetchAppByMariBalance(input: {
   const result = await requestJson("tenant/balance", apiKey);
   const balance = asFiniteNumber(result.body.balance, NaN);
   if (result.body.success !== true || !Number.isFinite(balance)) {
-    throw new AppByMariApiError(result.status, "AppByMari balance response was invalid");
+    throw new AppByMariApiError(result.status, "Store By Mari balance response was invalid");
   }
   return Math.max(0, balance);
 }
@@ -219,8 +219,8 @@ export async function buyAppByMariProduct(input: {
     throw new AppByMariApiError(
       result.status === 202 ? 503 : result.status,
       result.status === 202
-        ? "AppByMari purchase is still processing"
-        : "AppByMari purchase was rejected",
+        ? "Store By Mari purchase is still processing"
+        : "Store By Mari purchase was rejected",
     );
   }
 

@@ -1,7 +1,7 @@
 import type { Product } from "@/lib/products/types";
 
 export const APPBYMARI_PROVIDER_NAME = "appbymari-main";
-export const APPBYMARI_PROVIDER_DISPLAY_NAME = "AppByMari ร้านหลัก";
+export const APPBYMARI_PROVIDER_DISPLAY_NAME = "Store By Mari ร้านหลัก";
 export const APPBYMARI_API_BASE_URL = "https://appbymari.com/api/v1";
 export const APPBYMARI_TYPE_PREFIX = "appbymari:";
 

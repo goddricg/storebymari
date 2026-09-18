@@ -471,7 +471,7 @@ async function reservePurchase(input: {
     return { request, product, user, unitPrice, deliveries: [] };
   } catch (error) {
     await connection.rollback();
-    console.error("[AppByMari] reserve purchase failed", { requestId: input.requestId, code: errorCode(error) });
+    console.error("[Store By Mari] reserve purchase failed", { requestId: input.requestId, code: errorCode(error) });
     return failureResult(500, "ไม่สามารถเตรียมการสั่งซื้อได้ กรุณาลองใหม่", true);
   } finally {
     connection.release();
@@ -712,7 +712,7 @@ async function finalizePurchase(input: {
   } catch (error) {
     await connection.rollback();
     await markReconciliationRequired(input.requestId, input.processingToken);
-    console.error("[AppByMari] finalization needs reconciliation", { requestId: input.requestId, code: errorCode(error) });
+    console.error("[Store By Mari] finalization needs reconciliation", { requestId: input.requestId, code: errorCode(error) });
     return processingResult();
   } finally {
     connection.release();
@@ -784,7 +784,7 @@ async function executeClaim(input: {
         });
       }
       await markReconciliationRequired(input.requestId, input.processingToken);
-      console.error("[AppByMari] upstream outcome needs reconciliation", { requestId: input.requestId, code: errorCode(error) });
+    console.error("[Store By Mari] upstream outcome needs reconciliation", { requestId: input.requestId, code: errorCode(error) });
       return processingResult();
     }
   }
@@ -858,7 +858,7 @@ export async function attachAppByMariCase(input: {
       orderIds: input.orderIds,
     });
   } catch (error) {
-    console.error("[AppByMari] case attachment failed", { code: errorCode(error) });
+    console.error("[Store By Mari] case attachment failed", { code: errorCode(error) });
     return null;
   }
 }
