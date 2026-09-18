@@ -987,7 +987,7 @@ export default function OperatorMimiCenter() {
                   <div className="w-5 h-5 rounded-md overflow-hidden bg-primary/20 shrink-0">
                     <img src={SITE_BRAND_PWA_ICON_192_PATH} alt="Store by Mari" className="w-full h-full object-cover" />
                       </div>
-                      <span className="text-xs font-bold tracking-tight text-foreground/80">Appbymari</span>
+                      <span className="text-xs font-bold tracking-tight text-foreground/80">Store By Mari</span>
                       <span className="text-[10px] text-muted-foreground">• ตอนนี้</span>
                     </div>
                     <Bell className="w-3.5 h-3.5 text-primary" />

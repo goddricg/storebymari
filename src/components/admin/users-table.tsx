@@ -1507,7 +1507,7 @@ export default function UsersTable({ isChildSite }: { isChildSite?: boolean }) {
                 <div className="space-y-2">
                   <Label>ชื่อเว็ปลูก (Site Name)</Label>
                   <Input 
-                    placeholder="เช่น AppByMari 2" 
+                    placeholder="เช่น Store By Mari 2"
                     value={tenantSiteName} 
                     onChange={(e) => handleUpdateSiteName(e.target.value)}
                   />

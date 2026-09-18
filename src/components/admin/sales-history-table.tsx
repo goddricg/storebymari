@@ -43,6 +43,12 @@ type RevenueStats = {
   averageOrderValue: number;
 };
 
+const MAIN_SITE_INTERNAL_NAME = "Appbymari";
+
+function formatSiteName(name: string | undefined) {
+  return name === MAIN_SITE_INTERNAL_NAME ? "Store By Mari (เว็บหลัก)" : name ?? "-";
+}
+
 export default function SalesHistoryTable({ isLocal }: { isLocal?: boolean }) {
   const { user } = useSession();
   const isSuperAdmin = isSuperAdminUser(user);
@@ -437,7 +443,7 @@ export default function SalesHistoryTable({ isLocal }: { isLocal?: boolean }) {
               <option value="all">ทุกร้านค้า (All)</option>
               {sites.map((site) => (
                 <option key={site.id} value={site.id}>
-                  {site.name === "Appbymari" ? "Appbymari (เว็บหลัก)" : site.name}
+                  {formatSiteName(site.name)}
                 </option>
               ))}
             </select>
@@ -535,8 +541,8 @@ export default function SalesHistoryTable({ isLocal }: { isLocal?: boolean }) {
                         <Badge 
                           variant="outline" 
                           className={(() => {
-                            const name = sites.find(s => s.id === order.siteId)?.name || (order.siteId === 'main' ? 'Appbymari' : order.siteId);
-                            if (name === 'Appbymari') return 'border-blue-500 text-blue-700';
+                            const name = sites.find(s => s.id === order.siteId)?.name || (order.siteId === 'main' ? MAIN_SITE_INTERNAL_NAME : order.siteId);
+                            if (name === MAIN_SITE_INTERNAL_NAME) return 'border-blue-500 text-blue-700';
                             
                             const SHOP_COLORS = [
                               'border-emerald-500 text-emerald-700',
@@ -555,7 +561,7 @@ export default function SalesHistoryTable({ isLocal }: { isLocal?: boolean }) {
                             return SHOP_COLORS[Math.abs(hash) % SHOP_COLORS.length];
                           })()}
                         >
-                          {sites.find(s => s.id === order.siteId)?.name || (order.siteId === 'main' ? 'Appbymari' : order.siteId)}
+                          {formatSiteName(sites.find(s => s.id === order.siteId)?.name || (order.siteId === 'main' ? MAIN_SITE_INTERNAL_NAME : order.siteId))}
                         </Badge>
                       </TableCell>
                     )}
@@ -669,8 +675,8 @@ export default function SalesHistoryTable({ isLocal }: { isLocal?: boolean }) {
                         <Badge 
                           variant="outline" 
                           className={(() => {
-                            const name = sites.find(s => s.id === order.siteId)?.name || (order.siteId === 'main' ? 'Appbymari' : order.siteId);
-                            if (name === 'Appbymari') return 'border-blue-500 text-blue-700 text-[10px] px-1.5 py-0';
+                            const name = sites.find(s => s.id === order.siteId)?.name || (order.siteId === 'main' ? MAIN_SITE_INTERNAL_NAME : order.siteId);
+                            if (name === MAIN_SITE_INTERNAL_NAME) return 'border-blue-500 text-blue-700 text-[10px] px-1.5 py-0';
                             
                             const SHOP_COLORS = [
                               'border-emerald-500 text-emerald-700 text-[10px] px-1.5 py-0',
@@ -689,7 +695,7 @@ export default function SalesHistoryTable({ isLocal }: { isLocal?: boolean }) {
                             return SHOP_COLORS[Math.abs(hash) % SHOP_COLORS.length];
                           })()}
                         >
-                          {sites.find(s => s.id === order.siteId)?.name || (order.siteId === 'main' ? 'Appbymari' : order.siteId)}
+                          {formatSiteName(sites.find(s => s.id === order.siteId)?.name || (order.siteId === 'main' ? MAIN_SITE_INTERNAL_NAME : order.siteId))}
                         </Badge>
                       )}
                       {order.typeMenu && (
@@ -829,7 +835,7 @@ export default function SalesHistoryTable({ isLocal }: { isLocal?: boolean }) {
                     >
                       {selectedOrder.siteId === 'child1' ? 'PremiumBySom' : 
                        selectedOrder.siteId === 'child2' ? 'JaoBam' : 
-                       'Appbymari'}
+                       'Store By Mari'}
                     </Badge>
                   </div>
                 )}

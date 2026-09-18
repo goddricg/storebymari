@@ -568,7 +568,7 @@ export default function SupportCasesTable() {
                         {/* ร้านค้า */}
                         <td className="px-3 py-2.5 text-sm text-[#0B0B0B] dark:text-white">
                           <Badge variant="outline" className="text-[11px]">
-                            {caseData.shopName || "Appbymari"}
+                            {caseData.shopName === "Appbymari" ? "Store By Mari" : (caseData.shopName || "Store By Mari")}
                           </Badge>
                         </td>
 

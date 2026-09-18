@@ -164,7 +164,7 @@ export default function AppByMariProductsTable() {
           lastSyncedAt: current?.lastSyncedAt ?? null,
         }))
         setApiKey('')
-        toast.success('บันทึกการเชื่อมต่อ AppByMari แล้ว')
+        toast.success('บันทึกการเชื่อมต่อ Store By Mari แล้ว')
       } catch (saveError) {
         toast.error(saveError instanceof Error ? saveError.message : 'บันทึกการตั้งค่าไม่สำเร็จ')
       }
@@ -182,7 +182,7 @@ export default function AppByMariProductsTable() {
       })
       if (!response.ok) throw new Error(await readError(response, 'เชื่อมต่อไม่สำเร็จ'))
       const body = await response.json() as { message?: string; productCount?: number }
-      toast.success(body.message || 'เชื่อมต่อ AppByMari สำเร็จ', {
+      toast.success(body.message || 'เชื่อมต่อ Store By Mari สำเร็จ', {
         description: `พบสินค้า ${Number(body.productCount ?? 0).toLocaleString('th-TH')} รายการ`,
       })
     } catch (testError) {
@@ -201,7 +201,7 @@ export default function AppByMariProductsTable() {
       })
       if (!response.ok) throw new Error(await readError(response, 'Sync สินค้าไม่สำเร็จ'))
       const body = await response.json() as { count?: number }
-      toast.success(`Sync สินค้าจาก AppByMari แล้ว ${Number(body.count ?? 0).toLocaleString('th-TH')} รายการ`)
+      toast.success(`Sync สินค้าจาก Store By Mari แล้ว ${Number(body.count ?? 0).toLocaleString('th-TH')} รายการ`)
       await loadData(false)
     } catch (syncError) {
       toast.error(syncError instanceof Error ? syncError.message : 'Sync สินค้าไม่สำเร็จ')
@@ -360,7 +360,7 @@ export default function AppByMariProductsTable() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="appbymari-api-key">API KEY จาก AppByMari</Label>
+              <Label htmlFor="appbymari-api-key">API KEY จาก Store By Mari</Label>
               <Input
                 id="appbymari-api-key"
                 type="password"
@@ -390,8 +390,8 @@ export default function AppByMariProductsTable() {
               </div>
               <Button type="button" variant="outline" size="icon" onClick={() => void refreshMasterPoint()} disabled={isRefreshingPoint || !config?.hasApiKey} aria-label="รีเฟรช Master Point"><RefreshCw className={isRefreshingPoint ? 'size-4 animate-spin' : 'size-4'} /></Button>
             </div>
-            {masterPointError ? <p className="mt-3 rounded-lg bg-red-50 p-3 text-xs text-red-700">{masterPointError}</p> : <p className="mt-3 text-xs leading-5 text-[#6B7280]">Master Point อ้างอิงแบบสดผ่าน API key และแยกจากพ้อยท์ของลูกค้าใน StoreByMari</p>}
-            <div className="mt-4 flex items-center gap-2 text-xs text-[#6B7280]"><ShieldCheck className="size-4 text-emerald-600" />การซื้อสินค้าจากร้านหลักจะหักพ้อยท์ลูกค้าใน StoreByMari และเรียกตัด Master Point ผ่าน API</div>
+            {masterPointError ? <p className="mt-3 rounded-lg bg-red-50 p-3 text-xs text-red-700">{masterPointError}</p> : <p className="mt-3 text-xs leading-5 text-[#6B7280]">Master Point อ้างอิงแบบสดผ่าน API key และแยกจากพ้อยท์ของลูกค้าใน Store By Mari</p>}
+            <div className="mt-4 flex items-center gap-2 text-xs text-[#6B7280]"><ShieldCheck className="size-4 text-emerald-600" />การซื้อสินค้าจากร้านหลักจะหักพ้อยท์ลูกค้าใน Store By Mari และเรียกตัด Master Point ผ่าน API</div>
           </CardContent>
         </Card>
       </div>
@@ -404,16 +404,16 @@ export default function AppByMariProductsTable() {
 
       <Card className="border-[#f5bfd2] bg-white/95 shadow-sm">
         <CardHeader className="flex flex-col gap-3 border-b border-[#f7dce7] sm:flex-row sm:items-center sm:justify-between">
-          <div><CardTitle className="flex items-center gap-2 text-lg text-[#111827]"><Store className="size-5 text-[#d94d82]" />สินค้า API จากร้านหลัก</CardTitle><p className="mt-1 text-sm text-[#6B7280]">รายการนี้แสดงสินค้าทั้งหมดที่ Sync จาก AppByMari · แก้ไขราคา สถานะ และรูปภาพที่แสดงใน StoreByMari ได้</p></div>
+          <div><CardTitle className="flex items-center gap-2 text-lg text-[#111827]"><Store className="size-5 text-[#d94d82]" />สินค้า API จากร้านหลัก</CardTitle><p className="mt-1 text-sm text-[#6B7280]">รายการนี้แสดงสินค้าทั้งหมดที่ Sync จาก Store By Mari · แก้ไขราคา สถานะ และรูปภาพที่แสดงใน Store By Mari ได้</p></div>
           <Button type="button" variant="outline" onClick={() => void syncProducts()} disabled={isSyncing || !config?.hasApiKey || !config?.isActive}><RefreshCw className={isSyncing ? 'mr-2 size-4 animate-spin' : 'mr-2 size-4'} />{isSyncing ? 'กำลัง Sync...' : 'Sync สินค้าจากร้านหลัก'}</Button>
         </CardHeader>
         <CardContent className="p-0">
           {error ? <div className="m-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}<Button type="button" variant="link" className="ml-2 p-0 text-red-700" onClick={() => void loadData()}>ลองใหม่</Button></div> : null}
-          {products.length === 0 && !error ? <div className="p-12 text-center text-sm text-[#6B7280]">ยังไม่มีรายการสินค้า กด TEST Connect แล้วกด Sync เพื่อดึงสินค้าทั้งหมดจาก AppByMari</div> : null}
+          {products.length === 0 && !error ? <div className="p-12 text-center text-sm text-[#6B7280]">ยังไม่มีรายการสินค้า กด TEST Connect แล้วกด Sync เพื่อดึงสินค้าทั้งหมดจาก Store By Mari</div> : null}
           {products.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1120px] text-left text-sm">
-                <thead className="bg-[#fff7fb] text-xs uppercase text-[#7f485c]"><tr><th className="px-4 py-3">สินค้า</th><th className="px-4 py-3">รหัสจากร้านหลัก</th><th className="px-4 py-3">หมวดหมู่</th><th className="px-4 py-3 text-right">ต้นทุน AppByMari</th><th className="px-4 py-3">ราคาขาย StoreByMari</th><th className="px-4 py-3 text-center">สต็อก</th><th className="px-4 py-3 text-center">แสดงผล</th><th className="px-4 py-3 text-center">แก้ไข</th></tr></thead>
+                <thead className="bg-[#fff7fb] text-xs uppercase text-[#7f485c]"><tr><th className="px-4 py-3">สินค้า</th><th className="px-4 py-3">รหัสจากร้านหลัก</th><th className="px-4 py-3">หมวดหมู่</th><th className="px-4 py-3 text-right">ต้นทุน Store By Mari</th><th className="px-4 py-3">ราคาขาย Store By Mari</th><th className="px-4 py-3 text-center">สต็อก</th><th className="px-4 py-3 text-center">แสดงผล</th><th className="px-4 py-3 text-center">แก้ไข</th></tr></thead>
                 <tbody className="divide-y divide-[#f7dce7]">
                   {products.map((product) => {
                     const draft = priceDrafts[product.id] ?? String(product.salePrice)
@@ -441,7 +441,7 @@ export default function AppByMariProductsTable() {
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>แก้ไขสินค้า API จากร้านหลัก</DialogTitle>
-            <DialogDescription>เปลี่ยนรูปที่ใช้แสดงบน StoreByMari ได้ โดยข้อมูลชื่อ รายละเอียด ต้นทุน และรหัสสินค้ายังคงอ้างอิงจาก AppByMari</DialogDescription>
+            <DialogDescription>เปลี่ยนรูปที่ใช้แสดงบน Store By Mari ได้ โดยข้อมูลชื่อ รายละเอียด ต้นทุน และรหัสสินค้ายังคงอ้างอิงจาก Store By Mari</DialogDescription>
           </DialogHeader>
           {editingProduct ? (
             <div className="space-y-5">
@@ -454,7 +454,7 @@ export default function AppByMariProductsTable() {
                 <div className="relative flex h-44 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-[#edb5cc] bg-[#fff7fb]">
                   {imagePreview ? <Image src={imagePreview} alt={`ตัวอย่างรูป ${editingProduct.name}`} fill sizes="480px" className="object-contain p-3" unoptimized /> : <div className="flex flex-col items-center gap-2 text-xs text-[#9CA3AF]"><ImagePlus className="size-8 text-[#d94d82]" />ยังไม่มีรูปภาพ</div>}
                 </div>
-                <p className="text-xs text-[#6B7280]">{useSourceImage ? 'กำลังใช้รูปต้นฉบับจากร้านหลัก' : selectedImageFile ? `เลือกรูปใหม่แล้ว: ${selectedImageFile.name}` : 'กำลังใช้รูปที่ตั้งเองของ StoreByMari'}</p>
+                <p className="text-xs text-[#6B7280]">{useSourceImage ? 'กำลังใช้รูปต้นฉบับจากร้านหลัก' : selectedImageFile ? `เลือกรูปใหม่แล้ว: ${selectedImageFile.name}` : 'กำลังใช้รูปที่ตั้งเองของ Store By Mari'}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <label htmlFor="appbymari-edit-image-upload" className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md bg-[#d94d82] px-3 text-sm font-medium text-white transition hover:bg-[#c53b70]">

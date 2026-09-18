@@ -335,7 +335,7 @@ export default function RevenueHistoryTable({ isLocal }: { isLocal?: boolean }) 
               <option value="all">ทุกร้านค้า (All)</option>
               {sites.map((site) => (
                 <option key={site.id} value={site.id}>
-                  {site.name === "Appbymari" ? "Appbymari (เว็บหลัก)" : site.name}
+                  {site.name === "Appbymari" ? "Store By Mari (เว็บหลัก)" : site.name}
                 </option>
               ))}
             </select>
