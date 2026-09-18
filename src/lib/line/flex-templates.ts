@@ -1,5 +1,5 @@
 /**
- * LINE Flex Message Templates for App By Mari & Mimi AI Operator
+ * LINE Flex Message Templates for Store By Mari & Mimi AI Operator
  */
 
 export function buildStockConfirmFlex(params: {
@@ -341,7 +341,7 @@ export function buildStockSummaryFlex(
   if (inStock.length === 0) {
     return {
       type: "flex",
-      altText: "📊 สถานะสต็อกสินค้า App By Mari",
+      altText: "📊 สถานะสต็อกสินค้า Store By Mari",
       contents: {
         type: "bubble",
         size: "mega",
@@ -353,7 +353,7 @@ export function buildStockSummaryFlex(
           contents: [
             {
               type: "text",
-              text: "APP BY MARI INVENTORY",
+              text: "STORE BY MARI INVENTORY",
               weight: "bold",
               color: "#E9D5FF",
               size: "xxs",
@@ -428,7 +428,7 @@ export function buildStockSummaryFlex(
             contents: [
               {
                 type: "text",
-                text: "APP BY MARI INVENTORY",
+                text: "STORE BY MARI INVENTORY",
                 weight: "bold",
                 color: "#E9D5FF",
                 size: "xxs",
@@ -552,7 +552,7 @@ export function buildStockSummaryFlex(
 
   return {
     type: "flex",
-    altText: `📊 สรุปสถานะสต็อกพร้อมส่ง ${totalInStock} รายการ - App By Mari`,
+    altText: `📊 สรุปสถานะสต็อกพร้อมส่ง ${totalInStock} รายการ - Store By Mari`,
     contents:
       bubbles.length === 1
         ? bubbles[0]
@@ -728,7 +728,7 @@ export function buildCustomerCatalogFlex(
   if (inStock.length === 0) {
     return {
       type: "flex",
-      altText: "🍿 รายการสินค้าและราคาพร้อมส่ง - App By Mari",
+      altText: "🍿 รายการสินค้าและราคาพร้อมส่ง - Store By Mari",
       contents: {
         type: "bubble",
         size: "mega",
@@ -740,7 +740,7 @@ export function buildCustomerCatalogFlex(
           contents: [
             {
               type: "text",
-              text: "APP BY MARI • PREMIUM STORE",
+              text: "STORE BY MARI • PREMIUM STORE",
               weight: "bold",
               color: "#D8B4FE",
               size: "xxs",
@@ -816,7 +816,7 @@ export function buildCustomerCatalogFlex(
             contents: [
               {
                 type: "text",
-                text: "APP BY MARI • STORE",
+                text: "STORE BY MARI • STORE",
                 weight: "bold",
                 color: "#D8B4FE",
                 size: "xxs",
@@ -947,7 +947,7 @@ export function buildCustomerCatalogFlex(
 
   return {
     type: "flex",
-    altText: `🍿 รายการสินค้าและราคาพร้อมส่ง ${totalInStock} รายการ - App By Mari`,
+    altText: `🍿 รายการสินค้าและราคาพร้อมส่ง ${totalInStock} รายการ - Store By Mari`,
     contents:
       bubbles.length === 1
         ? bubbles[0]
@@ -961,7 +961,7 @@ export function buildCustomerCatalogFlex(
 export function buildCustomerSupportFlex() {
   return {
     type: "flex",
-    altText: "🔧 ศูนย์ช่วยเหลือและแจ้งปัญหาการใช้งาน - App By Mari",
+    altText: "🔧 ศูนย์ช่วยเหลือและแจ้งปัญหาการใช้งาน - Store By Mari",
     contents: {
       type: "bubble",
       size: "mega",

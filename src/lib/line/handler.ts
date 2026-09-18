@@ -666,7 +666,7 @@ function extractAccountsFallback(text: string): string[] {
 }
 
 /**
- * Call Gemini Flash for Admin Group messages ("Appbymari หลังบ้าน")
+ * Call Gemini Flash for Admin Group messages ("Store By Mari หลังบ้าน")
  * Uses 4-Tier Hierarchy (SSS: Papa, S: Mami, B: Som/Por, E: Guest)
  * Delegates to Mimi Admin Brain module.
  */
@@ -829,12 +829,12 @@ async function handleCustomerImageMessage(
 }
 
 /**
- * Handle Admin Group Messages ("Appbymari หลังบ้าน")
+ * Handle Admin Group Messages ("Store By Mari หลังบ้าน")
  * Respects hierarchy: "🦁 Zeries Sand 🦁" is ปะป๊า (Owner สูงสุด)
  * Other members are Admins
  */
 /**
- * Handle Admin Group Messages ("Appbymari หลังบ้าน")
+ * Handle Admin Group Messages ("Store By Mari หลังบ้าน")
  * Respects 4-tier hierarchy (SSS: Papa, S: Mami, B: Som/Por, E: Guest)
  * Incorporates rolling group context and permissions
  */
@@ -843,7 +843,7 @@ async function handleCustomerImageMessage(
  * 1. Removes text corresponding to LINE mention entities if provided.
  * 2. Strips zero-width & non-printable unicode characters (\u200B-\u200D, \uFEFF).
  * 3. Normalizes unicode whitespace characters to standard space.
- * 4. Strips bot mention prefixes (@มิมิ, @mimi, @App by Mari, @AppbyMari, @all).
+ * 4. Strips bot mention prefixes (@มิมิ, @mimi, legacy store aliases, @all).
  * 5. Strips redundant leading/trailing bot names.
  */
 export function cleanAdminCommandText(
@@ -872,7 +872,7 @@ export function cleanAdminCommandText(
 }
 
 /**
- * Handle Admin Group Messages ("Appbymari หลังบ้าน")
+ * Handle Admin Group Messages ("Store By Mari หลังบ้าน")
  * Respects 4-tier hierarchy (SSS: Papa, S: Mami, B: Som/Por, E: Guest)
  * Incorporates rolling group context and permissions
  */
@@ -928,7 +928,7 @@ async function handleAdminGroupMessage(
 
     const instructionText = isRegistered
       ? `ท่านสามารถสั่งงานมิมิและดูแลระบบได้ตามระดับสิทธิ์ของ ${senderTier.callName} ค่ะ 🐰💖`
-      : `หากเป็นทีมงาน Appbymari กรุณาส่ง UID ด้านล่างนี้ให้ปะป๊า (🦁 Zeries Sand 🦁)\nเพื่อให้ปะป๊าพิมพ์สั่งในกลุ่ม:\n👉 @มิมิ ตั้งสิทธิ์ [หม่ามี้/พี่ปอ/พี่ส้ม] ${senderUserId || "(ไม่พบ UID)"}`;
+      : `หากเป็นทีมงาน Store By Mari กรุณาส่ง UID ด้านล่างนี้ให้ปะป๊า (🦁 Zeries Sand 🦁)\nเพื่อให้ปะป๊าพิมพ์สั่งในกลุ่ม:\n👉 @มิมิ ตั้งสิทธิ์ [หม่ามี้/พี่ปอ/พี่ส้ม] ${senderUserId || "(ไม่พบ UID)"}`;
 
     await replyLineMessage(replyToken, {
       type: "text",
@@ -1015,7 +1015,7 @@ async function handleAdminGroupMessage(
 
     await replyLineMessage(replyToken, {
       type: "text",
-      text: `📋 สิทธิ์ทีมงาน Appbymari ในระบบ\n━━━━━━━━━━━━━━\n${rows}\n\n💡 ดู UID ของตนเอง: พิมพ์ "@มิมิ เช็คไอดี"\n💡 ปะป๊าตั้งสิทธิ์: พิมพ์ "@มิมิ ตั้งสิทธิ์ [ชื่อ] [UID]" 🐰✨`,
+      text: `📋 สิทธิ์ทีมงาน Store By Mari ในระบบ\n━━━━━━━━━━━━━━\n${rows}\n\n💡 ดู UID ของตนเอง: พิมพ์ "@มิมิ เช็คไอดี"\n💡 ปะป๊าตั้งสิทธิ์: พิมพ์ "@มิมิ ตั้งสิทธิ์ [ชื่อ] [UID]" 🐰✨`,
     });
     return;
   }
