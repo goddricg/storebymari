@@ -25,7 +25,7 @@ export async function generateMetadata({
   const params = await searchParams;
   const date = (Array.isArray(params.date) ? params.date[0] : params.date) || "";
   return {
-    title: `รายงานสรุปเวลาทำงาน Admin ประจำวัน (${date}) | App By Mari`,
+    title: `รายงานสรุปเวลาทำงาน Admin ประจำวัน (${date}) | Store By Mari`,
     robots: { index: false, follow: false },
   };
 }
