@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   }
   return {
-    title: "ศูนย์ควบคุม | App By Mari Admin | Appbymari",
+    title: "ศูนย์ควบคุม | Store By Mari Admin | Store By Mari",
     robots: { index: false, follow: false },
   };
 }
