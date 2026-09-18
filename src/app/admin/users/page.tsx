@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   }
   return {
-    title: "จัดการผู้ใช้งาน | App By Mari Admin | Appbymari",
+    title: "จัดการผู้ใช้งาน | Store By Mari Admin | Store By Mari",
     robots: { index: false, follow: false },
   };
 }
