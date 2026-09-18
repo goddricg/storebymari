@@ -19,6 +19,7 @@ import { toast } from 'sonner'
 import { subscribeProductStockRealtime } from '@/lib/products/realtime-hub'
 import { useLiveProductStock } from '@/components/products/product-stock-realtime-provider'
 import { DreamyOrnament } from '@/components/dreamy-ui/ornaments'
+import { getProductCardSummary } from '@/components/products/product-card-copy'
 
 type ProductCard = {
   id: string
@@ -758,6 +759,7 @@ function ProductCardItem({
     "/logos/default.svg",
   ].filter((source): source is string => Boolean(source))));
   const productImageUrl = productImageCandidates.find((source) => !failedImageUrls.includes(source));
+  const productSummary = getProductCardSummary(product.details);
 
   return (
     <Card
@@ -790,87 +792,104 @@ function ProductCardItem({
           )}
         </div>
         <div className="storefront-product-card-details flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 sm:gap-2">
+          <div className="storefront-product-card-badges relative z-40 flex min-h-[1.15rem] min-w-0 flex-wrap items-center gap-1">
+            {product.typeMenu ? (
+              <Badge
+                variant="secondary"
+                className={cn(
+                  "w-fit max-w-full truncate text-[10px] sm:text-xs",
+                  isOutOfStock
+                    ? "bg-gray-200 text-gray-500"
+                    : "theme-bg-10 text-[var(--theme-color)]"
+                )}
+              >
+                {product.typeMenu.toUpperCase()}
+              </Badge>
+            ) : null}
+            {priceVip != null && <VipBadge />}
+            {showOutOfStockBadge && isOutOfStock ? (
+              <Badge className="bg-gray-700 text-white text-[10px] font-semibold shadow-sm sm:text-xs">
+                สินค้าหมด
+              </Badge>
+            ) : badge === 'hot_sale' ? (
+              <Badge className="bg-red-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                HOT SALE
+              </Badge>
+            ) : badge === 'recommended' ? (
+              <Badge className="bg-green-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                แนะนำ
+              </Badge>
+            ) : null}
+          </div>
           <CardTitle data-card-layer="title" className={cn(
-            "dreamy-compact-product-title relative z-40 min-h-[2.45rem] text-pretty whitespace-pre-line break-words [overflow-wrap:anywhere] text-[13px] font-semibold leading-[1.22] sm:text-base",
+            "dreamy-compact-product-title relative z-40 min-h-[2.45rem] line-clamp-2 text-pretty whitespace-pre-line break-words [overflow-wrap:anywhere] text-[13px] font-semibold leading-[1.28] sm:text-base sm:leading-[1.3]",
             isOutOfStock ? "text-gray-500" : "text-[#0B0B0B]"
           )}>
-            <Link prefetch={false} href={productPath(product.typeId)} className="hover:underline focus-visible:underline">{normalizeNewlines(product.name)}</Link>
-          </CardTitle>
-          {(product.typeMenu || (showOutOfStockBadge && isOutOfStock) || (!isOutOfStock && badge) || priceVip != null) && (
-            <div className="storefront-product-card-badges relative z-40 flex min-w-0 flex-wrap items-center gap-1">
-              {product.typeMenu ? (
-                <Badge
-                  variant="secondary"
-                  className={cn(
-                    "w-fit max-w-full truncate text-[10px] sm:text-xs",
-                    isOutOfStock
-                      ? "bg-gray-200 text-gray-500"
-                      : "theme-bg-10 text-[var(--theme-color)]"
-                  )}
-                >
-                  {product.typeMenu.toUpperCase()}
-                </Badge>
-              ) : null}
-              {priceVip != null && <VipBadge />}
-              {showOutOfStockBadge && isOutOfStock ? (
-                <Badge className="bg-gray-700 text-white text-[10px] font-semibold shadow-sm sm:text-xs">
-                  สินค้าหมด
-                </Badge>
-              ) : badge === 'hot_sale' ? (
-                <Badge className="bg-red-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-                  HOT SALE
-                </Badge>
-              ) : badge === 'recommended' ? (
-                <Badge className="bg-green-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-                  แนะนำ
-                </Badge>
-              ) : null}
-            </div>
-          )}
-          <div data-card-layer="price" className="dreamy-price-capsule storefront-price-tag relative z-10 mt-auto">
-            <ProductPriceDisplay
-              price={price}
-              priceVip={priceVip}
-              priceWalkin={priceWalkin}
-              isOutOfStock={isOutOfStock}
-              className="text-sm font-semibold sm:text-base"
-            />
-          </div>
-          <div className="dreamy-product-meta flex w-full items-center justify-between gap-2 text-xs leading-snug text-[#6B7280] sm:text-sm">
-            <span className="dreamy-product-stock min-w-0 truncate font-medium">
-              {isPublished ? (
-                <>สต็อก: <span className="font-semibold text-[#0B0B0B]">{stock != null ? stock.toLocaleString() : 0}</span> ชิ้น</>
-              ) : (
-                <span className="font-semibold text-gray-500">สินค้าปิดการขาย</span>
-              )}
-            </span>
-            <span className="dreamy-product-code min-w-0 truncate text-right text-[#9CA3AF]">รหัส: {product.typeId}</span>
-          </div>
-          <div data-card-layer="actions" className="storefront-product-actions relative z-20 grid grid-cols-2 gap-1">
-            <PurchaseProductButton
-              typeId={product.typeId}
-              productName={product.name}
-              productDescription={product.details}
-              price={price}
-              priceVip={priceVip}
-              priceWalkin={priceWalkin}
-              stock={stock}
-              className="dreamy-buy-button storefront-buy-button w-full rounded-lg px-2 py-1.5 text-xs sm:rounded-xl sm:py-2 sm:text-sm"
-              disabled={isOutOfStock}
+            <Link
+              prefetch={false}
+              href={productPath(product.typeId)}
+              title={normalizeNewlines(product.name)}
+              className="hover:underline focus-visible:underline"
             >
-              ซื้อทันที
-            </PurchaseProductButton>
-            <AddToCartButton
-              typeId={product.typeId}
-              productName={product.name}
-              imageUrl={productImageUrl ?? "/logos/default.svg"}
-              price={price}
-              priceVip={priceVip}
-              priceWalkin={priceWalkin}
-              stock={stock}
-              disabled={isOutOfStock}
-              className="dreamy-cart-button w-full rounded-lg px-2 py-1.5 text-xs sm:rounded-xl sm:py-2 sm:text-sm"
-            />
+              {normalizeNewlines(product.name)}
+            </Link>
+          </CardTitle>
+          <p
+            data-card-layer="description"
+            title={productSummary}
+            className={cn(
+              "storefront-product-card-description relative z-40 min-h-[2.3rem] line-clamp-2 break-words text-[11px] leading-[1.35] sm:text-xs sm:leading-[1.4]",
+              isOutOfStock ? "text-gray-500" : "text-white/75"
+            )}
+          >
+            {productSummary}
+          </p>
+          <div className="storefront-product-card-commerce flex flex-col gap-1.5 sm:gap-2">
+            <div data-card-layer="price" className="dreamy-price-capsule storefront-price-tag relative z-10">
+              <ProductPriceDisplay
+                price={price}
+                priceVip={priceVip}
+                priceWalkin={priceWalkin}
+                isOutOfStock={isOutOfStock}
+                className="text-sm font-semibold sm:text-base"
+              />
+            </div>
+            <div className="dreamy-product-meta flex w-full items-center justify-between gap-2 text-xs leading-snug text-[#6B7280] sm:text-sm">
+              <span className="dreamy-product-stock min-w-0 truncate font-medium">
+                {isPublished ? (
+                  <>สต็อก: <span className="font-semibold text-[#0B0B0B]">{stock != null ? stock.toLocaleString() : 0}</span> ชิ้น</>
+                ) : (
+                  <span className="font-semibold text-gray-500">สินค้าปิดการขาย</span>
+                )}
+              </span>
+              <span className="dreamy-product-code min-w-0 truncate text-right text-[#9CA3AF]">รหัส: {product.typeId}</span>
+            </div>
+            <div data-card-layer="actions" className="storefront-product-actions relative z-20 grid grid-cols-2 gap-1">
+              <PurchaseProductButton
+                typeId={product.typeId}
+                productName={product.name}
+                productDescription={product.details}
+                price={price}
+                priceVip={priceVip}
+                priceWalkin={priceWalkin}
+                stock={stock}
+                className="dreamy-buy-button storefront-buy-button w-full rounded-lg px-2 py-1.5 text-xs sm:rounded-xl sm:py-2 sm:text-sm"
+                disabled={isOutOfStock}
+              >
+                ซื้อทันที
+              </PurchaseProductButton>
+              <AddToCartButton
+                typeId={product.typeId}
+                productName={product.name}
+                imageUrl={productImageUrl ?? "/logos/default.svg"}
+                price={price}
+                priceVip={priceVip}
+                priceWalkin={priceWalkin}
+                stock={stock}
+                disabled={isOutOfStock}
+                className="dreamy-cart-button w-full rounded-lg px-2 py-1.5 text-xs sm:rounded-xl sm:py-2 sm:text-sm"
+              />
+            </div>
           </div>
         </div>
       </CardContent>
