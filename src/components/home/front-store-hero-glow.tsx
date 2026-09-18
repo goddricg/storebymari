@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 const glowFrames = {
-  borderColor: ["#ff5bad", "#fffaff", "#ff5bad"],
+  borderColor: ["#ff4fae", "#ffffff", "#ff4fae"],
+  opacity: [0.92, 1, 0.92],
   boxShadow: [
-    "0 0 9px 1px rgba(255, 65, 167, 0.85), 0 0 24px 4px rgba(255, 65, 167, 0.55)",
-    "0 0 10px 1px rgba(255, 255, 255, 0.95), 0 0 28px 5px rgba(255, 235, 249, 0.68)",
-    "0 0 9px 1px rgba(255, 65, 167, 0.85), 0 0 24px 4px rgba(255, 65, 167, 0.55)",
+    "0 0 10px 2px rgba(255, 79, 174, 0.96), 0 0 30px 6px rgba(255, 67, 165, 0.66)",
+    "0 0 13px 2px rgba(255, 255, 255, 1), 0 0 36px 8px rgba(255, 238, 249, 0.82)",
+    "0 0 10px 2px rgba(255, 79, 174, 0.96), 0 0 30px 6px rgba(255, 67, 165, 0.66)",
   ],
 };
 
@@ -30,7 +31,12 @@ export default function FrontStoreHeroGlow() {
       animate={shouldAnimate ? glowFrames : undefined}
       transition={
         shouldAnimate
-          ? { duration: 3.2, ease: "easeInOut", repeat: Infinity }
+          ? {
+              duration: 2.8,
+              ease: "easeInOut",
+              repeat: Infinity,
+              times: [0, 0.5, 1],
+            }
           : undefined
       }
     />
