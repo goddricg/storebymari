@@ -258,7 +258,7 @@ export function PwaInstallProvider({ children }: { children: React.ReactNode }) 
               />
             </div>
             <DialogTitle className="text-xl font-bold text-white">
-              ติดตั้งแอปพลิเคชัน Appbymari
+              ติดตั้งแอปพลิเคชัน Store By Mari
             </DialogTitle>
             <DialogDescription className="mt-1 text-sm text-gray-400">
               ใช้งานเต็มหน้าจอ รวดเร็ว เสมือนแอปแท้บนหน้าจอโฮมของคุณ

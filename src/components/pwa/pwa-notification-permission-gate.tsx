@@ -242,7 +242,7 @@ export function PwaNotificationPermissionGate() {
                 เปิดการแจ้งเตือนเพื่อเข้าใช้งาน
               </h1>
               <p id="pwa-gate-desc" className="text-sm leading-relaxed text-gray-300">
-                แอปพลิเคชัน Appbymari จำเป็นต้องใช้สิทธิ์การแจ้งเตือน เพื่อให้คุณไม่พลาดสถานะคำสั่งซื้อ อัปเดตเคสปัญหา และข้อมูลบัญชีพรีเมียมของคุณ
+                แอปพลิเคชัน Store By Mari จำเป็นต้องใช้สิทธิ์การแจ้งเตือน เพื่อให้คุณไม่พลาดสถานะคำสั่งซื้อ อัปเดตเคสปัญหา และข้อมูลบัญชีพรีเมียมของคุณ
               </p>
             </div>
 
@@ -344,7 +344,7 @@ export function PwaNotificationPermissionGate() {
                       2
                     </span>
                     <span>
-                      เลื่อนลงไปที่เมนู <b className="text-white">"การแจ้งเตือน" (Notifications)</b> หรือหาชื่อแอป <b className="text-white">"Appbymari"</b>
+                      เลื่อนลงไปที่เมนู <b className="text-white">"การแจ้งเตือน" (Notifications)</b> หรือหาชื่อแอป <b className="text-white">"Store By Mari"</b>
                     </span>
                   </li>
                   <li className="flex items-start gap-2.5">
@@ -371,7 +371,7 @@ export function PwaNotificationPermissionGate() {
                       2
                     </span>
                     <span>
-                      ไปที่ <b className="text-white">แอป (Apps)</b> &rarr; <b className="text-white">Appbymari</b> (หรือ Chrome) &rarr; <b className="text-white">การแจ้งเตือน</b>
+                      ไปที่ <b className="text-white">แอป (Apps)</b> &rarr; <b className="text-white">Store By Mari</b> (หรือ Chrome) &rarr; <b className="text-white">การแจ้งเตือน</b>
                     </span>
                   </li>
                   <li className="flex items-start gap-2.5">
