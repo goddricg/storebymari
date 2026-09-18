@@ -253,7 +253,7 @@ export function PopupAnnouncementModal() {
               >
                 <Image
                   src={banner.imageUrl}
-                  alt={`App By Mari ประกาศที่ ${index + 1}`}
+                  alt={`Store By Mari ประกาศที่ ${index + 1}`}
                   fill
                   priority={index === 0}
                   sizes="(max-width: 768px) 85vw, 420px"
