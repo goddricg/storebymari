@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type SyntheticEvent } from 'react'
 import { X, ZoomIn } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +24,7 @@ export function ProductImageLightbox({
   onError,
 }: ProductImageLightboxProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [imageAspectRatio, setImageAspectRatio] = useState(16 / 9)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -51,6 +52,14 @@ export function ProductImageLightbox({
 
   const closeLightbox = () => setIsOpen(false)
 
+  const updateImageAspectRatio = (event: SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget
+
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      setImageAspectRatio(naturalWidth / naturalHeight)
+    }
+  }
+
   return (
     <>
       <button
@@ -69,6 +78,7 @@ export function ProductImageLightbox({
           sizes={sizes}
           unoptimized={unoptimized}
           className="dreamy-image-preserve object-cover p-0 transition-transform duration-300 group-hover:scale-[1.02]"
+          onLoad={updateImageAspectRatio}
           onError={onError}
         />
         <span
@@ -90,7 +100,8 @@ export function ProductImageLightbox({
               }}
             >
               <div
-                className="relative h-[70vh] w-[70vw] max-w-[96vw] rounded-2xl border border-pink-300/70 bg-[#09030d]/95 p-1.5 shadow-[0_0_45px_rgba(255,66,169,0.42)] sm:rounded-3xl sm:p-2 lg:h-[80vh] lg:w-[80vw]"
+                className="product-image-lightbox-frame relative rounded-2xl border border-pink-300/70 bg-[#09030d]/95 p-1.5 shadow-[0_0_45px_rgba(255,66,169,0.42)] sm:rounded-3xl sm:p-2"
+                style={{ '--product-image-lightbox-aspect': imageAspectRatio } as CSSProperties}
                 role="dialog"
                 aria-modal="true"
                 aria-label={`รูปภาพสินค้า ${alt}`}
@@ -112,6 +123,7 @@ export function ProductImageLightbox({
                     sizes="80vw"
                     unoptimized={unoptimized}
                     className="object-contain"
+                    onLoad={updateImageAspectRatio}
                     onError={onError}
                   />
                 </div>

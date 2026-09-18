@@ -3803,6 +3803,17 @@ body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]
   padding: 0 !important;
 }
 
+.product-image-lightbox-frame {
+  width: min(70vw, calc(70vh * var(--product-image-lightbox-aspect)));
+  aspect-ratio: var(--product-image-lightbox-aspect);
+}
+
+@media (min-width: 1024px) {
+  .product-image-lightbox-frame {
+    width: min(80vw, calc(80vh * var(--product-image-lightbox-aspect)));
+  }
+}
+
 body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
   .storefront-product-card .storefront-price-tag {
   position: relative;
