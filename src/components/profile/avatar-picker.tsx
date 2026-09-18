@@ -90,7 +90,7 @@ export default function AvatarPicker({ userId, initialAvatarKey }: AvatarPickerP
           <div className="flex items-center gap-2 text-sm font-bold text-[var(--theme-color)]">
             <Sparkles className="size-4" /> เลือก Avatar โปรไฟล์
           </div>
-          <p className="mt-1 text-xs text-[#6B7280]">เลือกจากคอลเลกชัน App By Mari ได้ทั้งหมด {RANKING_AVATAR_KEYS.length} แบบ</p>
+          <p className="mt-1 text-xs text-[#6B7280]">เลือกจากคอลเลกชัน Store By Mari ได้ทั้งหมด {RANKING_AVATAR_KEYS.length} แบบ</p>
         </div>
         <Button
           type="button"
