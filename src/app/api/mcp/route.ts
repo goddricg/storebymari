@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
         name: t.name,
         description: t.description,
       })),
-      message: "Appbymari Remote MCP Server is active and operational for Gemini Spark.",
+      message: "Store By Mari Remote MCP Server is active and operational for Gemini Spark.",
       timestamp: new Date().toISOString(),
     },
     {
