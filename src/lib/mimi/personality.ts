@@ -83,7 +83,7 @@ const CONCIERGE_PERSONALITY = `
 
 /**
  * 4. Admin Team Personality (โหมดกลุ่มงานหลังบ้าน)
- * ใช้เมื่อ: อยู่ในกลุ่ม LINE แอดมิน "Appbymari หลังบ้าน"
+ * ใช้เมื่อ: อยู่ในกลุ่ม LINE แอดมิน "Store By Mari หลังบ้าน"
  */
 function getAdminPersonality(options?: PersonalityOptions): string {
   const tier = options?.tier || "B";

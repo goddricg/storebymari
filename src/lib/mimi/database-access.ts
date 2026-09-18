@@ -735,7 +735,7 @@ export async function detectAndFetchDatabaseContext(
     return contextParts.join("\n\n");
   }
 
-  // B. Admin Group Flow ("Appbymari หลังบ้าน")
+  // B. Admin Group Flow ("Store By Mari หลังบ้าน")
   const tier = tierProfile?.tier || "B";
   const canDeepFinance = Boolean(tierProfile?.canAccessDeepFinance);
 
