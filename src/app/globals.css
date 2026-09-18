@@ -4645,3 +4645,81 @@ body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]
     }
   }
 }
+
+/* Storefront product-card information rhythm: keep the decorative frame while
+   giving every card the same readable copy slots and a compact purchase block. */
+@layer components {
+  body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
+    .storefront-product-card .storefront-product-card-badges {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 1.15rem;
+    justify-content: flex-start;
+    pointer-events: auto;
+    flex-wrap: wrap !important;
+    overflow: visible;
+  }
+
+  body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
+    .storefront-product-card .storefront-product-card-badges > * {
+    max-width: 100% !important;
+    padding-inline: 0.4rem;
+    font-size: 0.6rem !important;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
+    .storefront-product-card .dreamy-compact-product-title {
+    min-height: 2.55rem;
+    max-height: 2.55rem;
+    overflow: hidden;
+  }
+
+  body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
+    .storefront-product-card .storefront-product-card-description {
+    display: -webkit-box;
+    min-height: 2.3rem;
+    max-height: 2.3rem;
+    overflow: hidden;
+    color: rgb(255 222 241 / 0.78) !important;
+    line-height: 1.4;
+    text-shadow: 0 1px 2px rgb(34 0 22 / 0.72);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
+    .storefront-product-card[data-stock-state="out-of-stock"] .storefront-product-card-description {
+    color: rgb(229 231 235 / 0.78) !important;
+    text-shadow: 0 1px 2px rgb(31 41 55 / 0.55);
+  }
+
+  body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
+    .storefront-product-card .storefront-product-card-commerce {
+    margin-top: 0.1rem;
+    min-width: 0;
+  }
+
+  body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
+    .storefront-product-card .storefront-price-tag {
+    margin-top: 0 !important;
+  }
+
+  body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
+    .storefront-product-card.dreamy-compact-product-card {
+    aspect-ratio: auto !important;
+    block-size: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  body[data-site-id="main"][data-theme-pack="default"]:not(:has([data-admin-shell]))
+    .storefront-product-card .storefront-product-card-content {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+}
