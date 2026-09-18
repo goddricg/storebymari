@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Home, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/auth/use-session";
 import LogoImage from "@/components/logo-image";
@@ -12,48 +10,13 @@ import CustomerNotificationBell from "@/components/notifications/customer-notifi
 import { usePublicSettings } from "@/components/public-settings-provider";
 import { DreamyOrnament } from "@/components/dreamy-ui/ornaments";
 import StorefrontAccountMenuButton from "@/components/storefront-account-menu-button";
+import StorefrontPrimaryNav from "@/components/storefront-primary-nav";
 import { isAdminUser } from "@/lib/auth/roles";
-
-const NAV_LINKS = [
-  { href: "/", label: "หน้าแรก", icon: Home },
-  { href: "/products", label: "สินค้า", icon: ShoppingBag },
-] as const;
 
 export default function NavigationBar() {
   const pathname = usePathname();
-  const visibleNavLinks = pathname === "/cart"
-    ? NAV_LINKS.filter((link) => link.href !== "/")
-    : NAV_LINKS;
   const { user: currentUser } = useSession();
   const settings = usePublicSettings();
-  const [currentHash, setCurrentHash] = useState<string>("");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const updateHash = () => {
-      setCurrentHash(pathname === "/" ? window.location.hash : "");
-    };
-    const frameId = window.requestAnimationFrame(updateHash);
-    window.addEventListener("hashchange", updateHash);
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      window.removeEventListener("hashchange", updateHash);
-    };
-  }, [pathname]);
-
-  const isLinkActive = (href: string) => {
-    if (href === "/") {
-      return pathname === "/" && (!currentHash || currentHash === "" || currentHash === "#hero");
-    }
-    if (href.startsWith("/#")) {
-      if (pathname !== "/") return false;
-      const hash = href.replace("/", "");
-      if (!currentHash && hash === "#hero") return true;
-      return currentHash === hash;
-    }
-    return pathname === href || pathname.startsWith(`${href}/`);
-  };
 
   const isLoginPage = pathname === "/login";
   const isDreamyPublicPage = pathname === "/" || pathname.startsWith("/products");
@@ -99,31 +62,11 @@ export default function NavigationBar() {
             ) : null}
           </Link>
 
-          <div
-            className={cn(
-              "hidden items-center gap-4 text-base font-medium text-[#333333] lg:flex",
-              isDreamyPublicPage &&
-                "dreamy-nav-pill rounded-full border border-white/75 bg-white/55 px-5 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_8px_22px_rgba(211,78,126,0.1)]",
-            )}
-          >
-            {visibleNavLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "whitespace-nowrap transition-colors hover:text-[var(--theme-color)]",
-                    isLinkActive(link.href) ? "text-[var(--theme-color)]" : "text-[#9a5832]",
-                  )}
-                >
-                  <span className="flex items-center gap-2.5">
-                    <Icon className="size-5" aria-hidden="true" />
-                    {link.label}
-                  </span>
-                </Link>
-              );
-            })}
+          <div className="hidden items-center lg:flex">
+            <StorefrontPrimaryNav />
+          </div>
+
+          <div className="front-store-header-actions ml-auto">
             {currentUser ? (
               isAdminUser(currentUser) ? (
                 <SupportNotificationBell user={currentUser} />
@@ -133,20 +76,6 @@ export default function NavigationBar() {
             ) : (
               <CustomerNotificationBell user={null} />
             )}
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-3">
-            <div className="lg:hidden">
-              {currentUser ? (
-                isAdminUser(currentUser) ? (
-                  <SupportNotificationBell user={currentUser} />
-                ) : (
-                  <CustomerNotificationBell user={currentUser} />
-                )
-              ) : (
-                <CustomerNotificationBell user={null} />
-              )}
-            </div>
             <StorefrontAccountMenuButton />
           </div>
         </nav>

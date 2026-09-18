@@ -4,12 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import {
-  AlertCircle,
   Bell,
-  Headphones,
-  Home,
-  SearchCheck,
-  ShoppingBag,
   ShoppingCart,
 } from "lucide-react";
 import { useCart } from "@/components/cart/cart-provider";
@@ -25,14 +20,7 @@ import { useSession } from "@/lib/auth/use-session";
 import { isAdminUser } from "@/lib/auth/roles";
 import { usePublicSettings } from "@/components/public-settings-provider";
 import StorefrontAccountMenuButton from "@/components/storefront-account-menu-button";
-
-const primaryLinks = [
-  { href: "/", label: "หน้าแรก", Icon: Home },
-  { href: "/products", label: "สินค้า", Icon: ShoppingBag },
-  { href: "/support/check", label: "เช็คเลขเคส", Icon: SearchCheck },
-  { href: "/support/report", label: "แจ้งปัญหา", Icon: AlertCircle },
-  { href: "#support", label: "ติดต่อเรา", Icon: Headphones },
-] as const;
+import StorefrontPrimaryNav from "@/components/storefront-primary-nav";
 
 export default function FrontStoreHeader() {
   const headerRef = useRef<HTMLElement | null>(null);
@@ -70,14 +58,7 @@ export default function FrontStoreHeader() {
           />
         </Link>
 
-        <nav className="front-store-desktop-nav" aria-label="เมนูหลัก">
-          {primaryLinks.map(({ href, label, Icon }) => (
-            <Link href={href} key={label} className="front-store-nav-link">
-              <Icon aria-hidden="true" />
-              <span>{label}</span>
-            </Link>
-          ))}
-        </nav>
+        <StorefrontPrimaryNav />
 
         <div className="front-store-header-actions">
           <Link href="/cart" className="front-store-icon-link front-store-cart" aria-label={`ตะกร้าสินค้า ${totalQuantity} ชิ้น`}>

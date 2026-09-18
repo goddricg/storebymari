@@ -9,13 +9,11 @@ import {
   AlertCircle,
   Coins,
   FileText,
-  Headphones,
   History,
   Home,
   LogOut,
-  SearchCheck,
   ShieldCheck,
-  ShoppingBag,
+  UserRound,
 } from "lucide-react";
 import LoginForm from "@/components/auth/login-form";
 import {
@@ -38,14 +36,12 @@ import { isAdminUser, isSuperAdminUser } from "@/lib/auth/roles";
 import { usePublicSettings } from "@/components/public-settings-provider";
 import { cn } from "@/lib/utils";
 import { PwaInstallDropdownMenuItem } from "@/components/pwa/pwa-install-menu-item";
-
-const primaryLinks = [
-  { href: "/", label: "หน้าแรก", Icon: Home },
-  { href: "/products", label: "สินค้า", Icon: ShoppingBag },
-  { href: "/support/check", label: "เช็คเลขเคส", Icon: SearchCheck },
-  { href: "/support/report", label: "แจ้งปัญหา", Icon: AlertCircle },
-  { href: "#support", label: "ติดต่อเรา", Icon: Headphones },
-] as const;
+import {
+  getDefaultAvatarKeyForUser,
+  getProfileAvatarUrl,
+  isValidRankingAvatarKey,
+} from "@/lib/ranking/avatars";
+import { STOREFRONT_PRIMARY_LINKS } from "@/components/storefront-primary-nav";
 
 const ACCOUNT_CAT_ICON_PATH = "/front-store/storebymari-black-cat-account.png";
 
@@ -61,6 +57,7 @@ export default function StorefrontAccountMenuButton({
   const [accountMenuAnimating, setAccountMenuAnimating] = useState(false);
   const [masterPointStatus, setMasterPointStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [masterPoint, setMasterPoint] = useState<number | null>(null);
+  const [avatarKey, setAvatarKey] = useState<string | null>(null);
   const accountMenuTimerRef = useRef<number | null>(null);
   const router = useRouter();
   const { user, refreshSession } = useSession();
@@ -69,6 +66,7 @@ export default function StorefrontAccountMenuButton({
   const canViewMasterPoint = Boolean(user && isSuperAdminUser(user));
   const siteName = publicSettings.site_name?.trim() || "Store By Mari";
   const accountHref = user ? (isAdmin ? "/admin" : "/dashboard") : "/login";
+  const userId = user?.id ?? null;
 
   useEffect(() => {
     return () => {
@@ -86,6 +84,49 @@ export default function StorefrontAccountMenuButton({
     window.addEventListener("auth:session-changed", handleAuthChange);
     return () => window.removeEventListener("auth:session-changed", handleAuthChange);
   }, [refreshSession]);
+
+  useEffect(() => {
+    if (!userId) {
+      setAvatarKey(null);
+      return;
+    }
+
+    const fallbackAvatarKey = getDefaultAvatarKeyForUser(userId);
+    const localStorageKey = `appbymari:profile-avatar:${userId}`;
+    const localAvatarKey = window.localStorage.getItem(localStorageKey);
+    setAvatarKey(localAvatarKey && isValidRankingAvatarKey(localAvatarKey) ? localAvatarKey : fallbackAvatarKey);
+
+    let cancelled = false;
+    const loadAvatar = async () => {
+      try {
+        const response = await fetch("/api/profile/avatar", {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const body = (await response.json()) as { avatarKey?: unknown };
+        if (!cancelled && typeof body.avatarKey === "string" && isValidRankingAvatarKey(body.avatarKey)) {
+          setAvatarKey(body.avatarKey);
+        }
+      } catch {
+        // Keep the deterministic/local fallback avatar when profile storage is unavailable.
+      }
+    };
+
+    const handleAvatarUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{ userId?: string; avatarKey?: string }>).detail;
+      if (detail?.userId === userId && detail.avatarKey && isValidRankingAvatarKey(detail.avatarKey)) {
+        setAvatarKey(detail.avatarKey);
+      }
+    };
+
+    window.addEventListener("appbymari:profile-avatar-updated", handleAvatarUpdate);
+    void loadAvatar();
+    return () => {
+      cancelled = true;
+      window.removeEventListener("appbymari:profile-avatar-updated", handleAvatarUpdate);
+    };
+  }, [userId]);
 
   const handleAccountMenuOpenChange = (open: boolean) => {
     if (accountMenuTimerRef.current !== null) {
@@ -183,42 +224,58 @@ export default function StorefrontAccountMenuButton({
           className="front-store-account-popover min-w-[280px] border-[#f47fbe]/70 bg-[#160d1d]/[.98] p-2 text-white shadow-[0_18px_50px_rgba(0,0,0,.48),0_0_24px_rgba(255,40,157,.22)]"
         >
           <DropdownMenuLabel className="front-store-account-summary px-3 py-2">
-            <div className="flex flex-col gap-1">
-              <span className="truncate text-sm font-bold text-white">
-                {user ? (user.displayName ?? user.email) : siteName}
-              </span>
-              <span className="truncate text-xs text-[#f7c9e5]">
-                {user ? user.email : "เมนูหลักและการเข้าสู่ระบบ"}
-              </span>
+            <div className="flex items-start gap-3">
               {user ? (
-                <span className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-[#ffd36b]">
-                  <Coins className="size-4" aria-hidden="true" />
-                  {user.points.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })} พ้อยท์
+                <span className="front-store-account-avatar-frame" aria-hidden="true">
+                  <Image
+                    src={getProfileAvatarUrl(avatarKey)}
+                    alt=""
+                    width={52}
+                    height={52}
+                    sizes="44px"
+                    className="front-store-account-avatar"
+                  />
                 </span>
               ) : null}
-              {canViewMasterPoint ? (
-                <div className="mt-2 rounded-lg border border-[#f47fbe]/25 bg-black/20 px-2.5 py-2" aria-live="polite">
-                  <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-[#f7c9e5]">
-                    <span className="inline-flex items-center gap-1.5"><Coins className="size-3.5 text-[#ffd36b]" aria-hidden="true" />Master Point</span>
-                    <span className={masterPointStatus === "ready" ? "text-emerald-300" : masterPointStatus === "error" ? "text-rose-300" : "text-[#f7c9e5]"}>
-                      {masterPointStatus === "ready" ? "ออนไลน์" : masterPointStatus === "error" ? "เชื่อมต่อไม่ได้" : "กำลังตรวจสอบ"}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-col gap-1">
+                  <span className="truncate text-sm font-bold text-white">
+                    {user ? (user.displayName ?? user.email) : siteName}
+                  </span>
+                  <span className="truncate text-xs text-[#f7c9e5]">
+                    {user ? user.email : "เมนูหลักและการเข้าสู่ระบบ"}
+                  </span>
+                  {user ? (
+                    <span className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-[#ffd36b]">
+                      <Coins className="size-4" aria-hidden="true" />
+                      {user.points.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })} พ้อยท์
                     </span>
-                  </div>
-                  <p className="mt-1 text-sm font-bold text-[#ffd36b]">
-                    {masterPointStatus === "ready" && masterPoint !== null
-                      ? `${masterPoint.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} พ้อยท์`
-                      : masterPointStatus === "error" ? "ไม่สามารถดึงยอดล่าสุดได้" : "กำลังดึงยอดล่าสุด..."}
-                  </p>
-                  <p className="mt-1 text-[10px] font-normal text-[#f7c9e5]">อัปเดตอัตโนมัติทุก 15 วินาที</p>
+                  ) : null}
                 </div>
-              ) : null}
+                {canViewMasterPoint ? (
+                  <div className="mt-2 rounded-lg border border-[#f47fbe]/25 bg-black/20 px-2.5 py-2" aria-live="polite">
+                    <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-[#f7c9e5]">
+                      <span className="inline-flex items-center gap-1.5"><Coins className="size-3.5 text-[#ffd36b]" aria-hidden="true" />Master Point</span>
+                      <span className={masterPointStatus === "ready" ? "text-emerald-300" : masterPointStatus === "error" ? "text-rose-300" : "text-[#f7c9e5]"}>
+                        {masterPointStatus === "ready" ? "ออนไลน์" : masterPointStatus === "error" ? "เชื่อมต่อไม่ได้" : "กำลังตรวจสอบ"}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm font-bold text-[#ffd36b]">
+                      {masterPointStatus === "ready" && masterPoint !== null
+                        ? `${masterPoint.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} พ้อยท์`
+                        : masterPointStatus === "error" ? "ไม่สามารถดึงยอดล่าสุดได้" : "กำลังดึงยอดล่าสุด..."}
+                    </p>
+                    <p className="mt-1 text-[10px] font-normal text-[#f7c9e5]">อัปเดตอัตโนมัติทุก 15 วินาที</p>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </DropdownMenuLabel>
 
-          {primaryLinks.map(({ href, label, Icon }) => (
+          {STOREFRONT_PRIMARY_LINKS.map(({ href, label, Icon }) => (
             <DropdownMenuItem key={`mobile-${label}`} asChild className="front-store-account-mobile-nav-item">
               <Link href={href}>
                 <Icon aria-hidden="true" />
@@ -231,6 +288,12 @@ export default function StorefrontAccountMenuButton({
 
           {user ? (
             <>
+              <DropdownMenuItem asChild className="front-store-account-menu-item">
+                <Link href="/dashboard">
+                  <UserRound aria-hidden="true" />
+                  <span>เข้าโปรไฟล์</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild className="front-store-account-menu-item">
                 <Link href={accountHref}>
                   {isAdmin ? <ShieldCheck aria-hidden="true" /> : <Home aria-hidden="true" />}

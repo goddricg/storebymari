@@ -1,13 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireUser } from "@/lib/auth/server";
-import { setUserAvatarKey } from "@/lib/ranking/repository";
+import { getCurrentUser, requireUser } from "@/lib/auth/server";
+import { getUserAvatarKey, setUserAvatarKey } from "@/lib/ranking/repository";
 import { getSiteId } from "@/lib/site";
 
 const avatarSchema = z.object({
   avatarKey: z.string().regex(/^avatar-\d{3}$/),
 });
+
+export async function GET() {
+  if (getSiteId() !== "main") {
+    return NextResponse.json({ avatarKey: null }, { status: 200 });
+  }
+
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ avatarKey: null }, { status: 401 });
+    }
+
+    const avatarKey = await getUserAvatarKey(user.id);
+    return NextResponse.json(
+      { avatarKey },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
+  } catch (error) {
+    console.error("Profile avatar GET error:", error instanceof Error ? error.message : error);
+    return NextResponse.json({ message: "ไม่สามารถโหลด Avatar ได้" }, { status: 500 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   if (getSiteId() !== "main") {
