@@ -134,19 +134,21 @@ export default function StorefrontAccountMenuButton({
       accountMenuTimerRef.current = null;
     }
 
-    if (!open) {
+    // Radix controls the menu lifecycle through this callback. Keep the
+    // controlled `open` state in sync immediately so repeated clicks cannot
+    // race a delayed state update and leave the portal visually stuck open.
+    setAccountMenuOpen(open);
+    setAccountMenuAnimating(open);
+
+    if (!open || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setAccountMenuAnimating(false);
-      setAccountMenuOpen(false);
       return;
     }
 
-    setAccountMenuAnimating(true);
-    const animationDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 360;
     accountMenuTimerRef.current = window.setTimeout(() => {
-      setAccountMenuOpen(true);
       setAccountMenuAnimating(false);
       accountMenuTimerRef.current = null;
-    }, animationDelay);
+    }, 360);
   };
 
   useEffect(() => {
