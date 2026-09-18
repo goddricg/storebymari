@@ -1,6 +1,6 @@
 /**
  * Mimi Admin Operations & Security Brain (Brain D)
- * Specialized for the internal Admin Group ("Appbymari หลังบ้าน").
+ * Specialized for the internal Admin Group ("Store By Mari หลังบ้าน").
  * Handles:
  * - 4-Tier Hierarchy Enforcement (SSS: Papa, S: Mami, B: Som/Por, E: Guest)
  * - Strict Financial Data Shielding: Protects cost, profit, and revenue numbers unless explicitly requested by Papa.
