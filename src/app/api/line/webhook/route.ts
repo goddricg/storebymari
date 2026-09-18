@@ -8,7 +8,7 @@ export async function GET() {
   const { resolveAdminTier, ADMIN_TIERS } = await import("@/lib/mimi/admin-tiers");
   const papaTier = resolveAdminTier("U366bbe749237c0efd4bc388958e7a299", "🦁 Zeries Sand 🦁");
   return NextResponse.json({
-    status: "LINE Webhook endpoint ready for App By Mari",
+    status: "LINE Webhook endpoint ready for Store By Mari",
     channelId: LINE_CHANNEL_ID,
     buildId: "BUILD-2026-09-11-0130",
     papaTier: papaTier.tier,
