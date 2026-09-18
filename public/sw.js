@@ -1,4 +1,4 @@
-// Service Worker for AppByMari Web Push Notifications
+// Service Worker for Store By Mari Web Push Notifications
 self.addEventListener('install', () => {
   self.skipWaiting();
 });
@@ -31,7 +31,7 @@ self.addEventListener('push', (event) => {
     vibratePattern = [150, 80, 150, 80, 250];
   }
 
-  const title = data.title || 'แจ้งเตือนจาก AppByMari';
+  const title = data.title || 'แจ้งเตือนจาก Store By Mari';
   const targetUrl = data.url || payloadData.url || '/';
 
   const options = {
