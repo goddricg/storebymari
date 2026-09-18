@@ -80,7 +80,7 @@ export type Product = {
   badge: 'hot_sale' | 'recommended' | null;
   createdAt: string;
   updatedAt: string;
-  /** Internal marker used to route namespaced AppByMari storefront products. */
+  /** Internal marker used to route namespaced Store By Mari storefront products. */
   isExternal?: boolean;
   externalSourceTypeId?: string;
 };

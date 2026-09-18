@@ -429,7 +429,7 @@ export async function getAllCategories(
     }));
 
     // Keep the category navigation sourced from the site's real catalogue.
-    // AppByMari rows may contribute counts only when their synced category is
+    // Store By Mari rows may contribute counts only when their synced category is
     // already present in that catalogue; unmatched source categories remain
     // visible under "ทั้งหมด" without inventing local categories.
     try {
@@ -514,7 +514,7 @@ async function _fetchPublishedProductsPaginated(
       } else {
         // The upstream category can be present in the synced catalog even if
         // it has not been added to the site's category table yet. Keep local
-        // rows out of this filtered result while still allowing AppByMari rows
+      // rows out of this filtered result while still allowing Store By Mari rows
         // to match their source category below.
         whereClause += " AND 1 = 0";
       }
