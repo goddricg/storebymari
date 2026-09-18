@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AppbyMari Notification Sound System
+ * Store By Mari Notification Sound System
  * 
  * 3 Distinct Sound Presets:
  * 1. admin_support: Chime alert when user submits a new support case (for Admins)
