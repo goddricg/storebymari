@@ -498,13 +498,15 @@ body:has(.front-store-page) [data-site-global-bottom-navigation] {
 }
 
 .front-store-notification .front-store-notification-trigger {
-  color: #5a1238;
+  color: #fff !important;
+  filter: drop-shadow(0 0 5px rgb(255 255 255 / 80%));
 }
 
 .front-store-notification .front-store-notification-trigger:hover,
 .front-store-notification .front-store-notification-trigger:focus-visible {
-  background: rgb(255 255 255 / 16%);
-  color: #8e265f;
+  background: rgb(255 255 255 / 20%);
+  color: #fff !important;
+  filter: drop-shadow(0 0 8px rgb(255 255 255 / 95%));
 }
 
 .front-store-account-menu-item {

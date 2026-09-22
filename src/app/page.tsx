@@ -41,7 +41,13 @@ export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const { siteName } = getSiteConfig();
-  return pageMetadata(`${siteName} สินค้าและแอปพรีเมียมออนไลน์`, STORE_DESCRIPTION, "/");
+  const publicSettings = await loadLayoutPublicSettings();
+  const configuredTitle = publicSettings.site_title?.trim();
+  return pageMetadata(
+    configuredTitle || `${siteName} สินค้าและแอปพรีเมียมออนไลน์`,
+    STORE_DESCRIPTION,
+    "/",
+  );
 }
 
 // The root layout remains request-rendered for live tenant theme settings.
