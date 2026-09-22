@@ -326,6 +326,12 @@ export default function StorefrontAccountMenuButton({
                   <span>แจ้งปัญหา</span>
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild className="front-store-account-menu-item">
+                <Link href="/support/history">
+                  <FileText aria-hidden="true" />
+                  <span>ประวัติการส่งเคลม</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-[#f47fbe]/25" />
               <DropdownMenuItem
                 className="front-store-account-menu-item front-store-account-logout"

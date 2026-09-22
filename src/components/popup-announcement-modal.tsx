@@ -17,6 +17,21 @@ interface PopupBannerItem {
   imageUrl: string;
   action: "none" | "install_app" | "open_link";
   linkUrl?: string;
+  startAt?: string;
+  endAt?: string;
+}
+
+function isBannerWithinSchedule(banner: PopupBannerItem, now = Date.now()): boolean {
+  const start = banner.startAt?.trim() ? Date.parse(banner.startAt) : null;
+  const end = banner.endAt?.trim() ? Date.parse(banner.endAt) : null;
+
+  // Empty values mean no boundary. Invalid non-empty values fail closed so an
+  // accidentally malformed schedule never makes an announcement permanent.
+  if (start !== null && Number.isNaN(start)) return false;
+  if (end !== null && Number.isNaN(end)) return false;
+  if (start !== null && now < start) return false;
+  if (end !== null && now > end) return false;
+  return true;
 }
 
 export function PopupAnnouncementModal() {
@@ -26,7 +41,13 @@ export function PopupAnnouncementModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [scheduleNow, setScheduleNow] = useState(() => Date.now());
   const touchStartXRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setScheduleNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Helper to get local date string YYYY-MM-DD
   const getTodayString = useCallback(() => {
@@ -64,13 +85,20 @@ export function PopupAnnouncementModal() {
       ];
     }
 
-    return items.filter((b) => b.enabled && b.imageUrl && b.imageUrl.trim() !== "");
+    return items.filter(
+      (b) =>
+        b.enabled &&
+        b.imageUrl &&
+        b.imageUrl.trim() !== "" &&
+        isBannerWithinSchedule(b, scheduleNow),
+    );
   }, [
     settings.popup_announcement_items,
     settings.popup_announcement_enabled,
     settings.popup_announcement_image_url,
     settings.popup_announcement_action,
     settings.popup_announcement_link_url,
+    scheduleNow,
   ]);
 
   // Slide interval in milliseconds (default 2 seconds = 2000ms)
