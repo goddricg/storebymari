@@ -39,7 +39,6 @@ import LocalStockManagementTable from '@/components/admin/local-stock-management
 import StockManagementTable from '@/components/admin/stock-management-table'
 import SettingsTable from '@/components/admin/settings-table'
 import ThemeManager from '@/components/admin/theme-manager'
-import LogSettingsTable from '@/components/admin/log-settings-table'
 import SalesHistoryTable from '@/components/admin/sales-history-table'
 import RevenueHistoryTable from '@/components/admin/revenue-history-table'
 import SupportCasesTable from '@/components/admin/support-cases-table'
@@ -95,7 +94,6 @@ const SUPERADMIN_MENU_ITEMS = [
   { id: 'revenue', label: 'สรุปยอด', icon: DollarSign },
   { id: 'purchase-cases', label: 'Case Order / บิลเงินสด', icon: FileText },
   { id: 'settings', label: 'ตั้งค่าเว็บไซต์', icon: Settings },
-  { id: 'log', label: 'ตั้งค่า Log', icon: FileText },
 ] as const
 
 const CHILD_ADMIN_MENU_ITEMS = [
@@ -566,24 +564,6 @@ export default function AdminLayout() {
               </CardContent>
             </Card>
           </div>
-        )
-      case 'log':
-        // เฉพาะ superadmin เท่านั้นที่เห็นเมนูนี้
-        if (!isSuperAdmin) {
-          return null
-        }
-        return (
-          <Card className="border-transparent bg-white/95 shadow-lg shadow-black/5">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#0B0B0B]">ตั้งค่า Log</CardTitle>
-              <p className="text-sm text-[#9a5832]">
-                ตั้งค่า Discord webhook URLs สำหรับแจ้งเตือนการเติมพ้อย การซื้อสินค้า และ Admin Actions
-              </p>
-            </CardHeader>
-            <CardContent>
-              <LogSettingsTable />
-            </CardContent>
-          </Card>
         )
       case 'audit':
         if (isChildSite || !isSuperAdmin) {

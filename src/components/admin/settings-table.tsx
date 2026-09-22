@@ -26,6 +26,83 @@ type SettingsTableProps = {
 const LOGIN_BACKGROUND_KEY = "login_bg_image";
 const LOGIN_BACKGROUND_ASPECT_RATIO = 16 / 9;
 const LOGIN_BACKGROUND_ASPECT_TOLERANCE = 0.02;
+const DEFAULT_SLIP2GO_ENDPOINT = "https://connect.slip2go.com/api/verify-slip/qr-image/info";
+
+const SLIP2GO_SETTING_FIELDS = [
+  {
+    key: "slip2go_api_endpoint",
+    label: "Slip2Go API Endpoint",
+    placeholder: DEFAULT_SLIP2GO_ENDPOINT,
+    help: "ใช้ค่าเริ่มต้นนี้ได้ หรือเปลี่ยนเป็น Endpoint ที่ผู้ให้บริการแจ้งให้ร้าน",
+  },
+  {
+    key: "slip2go_api_secret",
+    label: "Slip2Go API Key / Secret",
+    placeholder: "วาง API Key ของ Slip2Go ที่นี่",
+    help: "ระบบจะส่งคีย์นี้จากฝั่งเซิร์ฟเวอร์เท่านั้น ห้ามใส่คีย์ในโค้ดหน้าเว็บ",
+  },
+] as const;
+
+const BANK_ACCOUNT_SETTING_FIELDS = [
+  {
+    key: "bank_account_number",
+    label: "เลขบัญชีธนาคาร",
+    placeholder: "เช่น 123-4-56789-0",
+  },
+  {
+    key: "bank_account_name",
+    label: "ชื่อบัญชีรับเงิน",
+    placeholder: "ชื่อเจ้าของบัญชี",
+  },
+  {
+    key: "bank_name",
+    label: "ชื่อธนาคาร",
+    placeholder: "เช่น กสิกรไทย",
+  },
+] as const;
+
+const TOPUP_SETTING_FIELDS = [
+  {
+    key: "expected_receiver_account",
+    label: "เลขบัญชีผู้รับเงินสำหรับตรวจสอบสลิป",
+    placeholder: "เว้นว่างเพื่อใช้เลขบัญชีธนาคารด้านบน",
+    type: "text",
+  },
+  {
+    key: "minimum_topup_amount",
+    label: "ยอดเติมเงินขั้นต่ำ (บาท)",
+    placeholder: "49",
+    type: "number",
+  },
+] as const;
+
+type PopupBannerItem = {
+  id: number;
+  enabled: boolean;
+  imageUrl: string;
+  action: "none" | "install_app" | "open_link";
+  linkUrl: string;
+  startAt: string;
+  endAt: string;
+};
+
+function isPopupBannerWithinSchedule(banner: PopupBannerItem, now = Date.now()): boolean {
+  const start = banner.startAt.trim() ? Date.parse(banner.startAt) : null;
+  const end = banner.endAt.trim() ? Date.parse(banner.endAt) : null;
+  if (start !== null && Number.isNaN(start)) return false;
+  if (end !== null && Number.isNaN(end)) return false;
+  if (start !== null && now < start) return false;
+  if (end !== null && now > end) return false;
+  return true;
+}
+
+function toDateTimeLocalValue(value: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 16);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 function readImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
   return new Promise((resolve) => {
@@ -163,14 +240,6 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
   const popupAnnouncementSlideInterval = drafts["popup_announcement_slide_interval"] || "2";
   const [selectedBannerId, setSelectedBannerId] = useState(1);
 
-  type PopupBannerItem = {
-    id: number;
-    enabled: boolean;
-    imageUrl: string;
-    action: "none" | "install_app" | "open_link";
-    linkUrl: string;
-  };
-
   const popupAnnouncementItems: PopupBannerItem[] = useMemo(() => {
     try {
       if (drafts["popup_announcement_items"]) {
@@ -184,6 +253,8 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
               imageUrl: existing?.imageUrl ?? "",
               action: (existing?.action as any) || "none",
               linkUrl: existing?.linkUrl ?? "",
+              startAt: typeof existing?.startAt === "string" ? existing.startAt : "",
+              endAt: typeof existing?.endAt === "string" ? existing.endAt : "",
             };
           });
         }
@@ -199,11 +270,13 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
         imageUrl: drafts["popup_announcement_image_url"] || "/images/popup-pwa-announcement.jpg",
         action: (drafts["popup_announcement_action"] as any) || "install_app",
         linkUrl: drafts["popup_announcement_link_url"] ?? "",
+        startAt: "",
+        endAt: "",
       },
-      { id: 2, enabled: false, imageUrl: "", action: "none", linkUrl: "" },
-      { id: 3, enabled: false, imageUrl: "", action: "none", linkUrl: "" },
-      { id: 4, enabled: false, imageUrl: "", action: "none", linkUrl: "" },
-      { id: 5, enabled: false, imageUrl: "", action: "none", linkUrl: "" },
+      { id: 2, enabled: false, imageUrl: "", action: "none", linkUrl: "", startAt: "", endAt: "" },
+      { id: 3, enabled: false, imageUrl: "", action: "none", linkUrl: "", startAt: "", endAt: "" },
+      { id: 4, enabled: false, imageUrl: "", action: "none", linkUrl: "", startAt: "", endAt: "" },
+      { id: 5, enabled: false, imageUrl: "", action: "none", linkUrl: "", startAt: "", endAt: "" },
     ];
   }, [
     drafts["popup_announcement_items"],
@@ -1001,15 +1074,15 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
                   สามารถเปิด-ปิดแต่ละป้ายแยกอิสระ หากเปิดเกิน 1 ป้ายจะสไลด์วนอัตโนมัติ
                 </p>
               </div>
-              <span className="text-xs font-semibold text-[var(--theme-color)] bg-[var(--theme-color)]/10 px-3 py-1 rounded-full border border-[var(--theme-color)]/20">
-                เปิดใช้งาน {popupAnnouncementItems.filter((b) => b.enabled && b.imageUrl).length} / 5 ป้าย
+                <span className="text-xs font-semibold text-[var(--theme-color)] bg-[var(--theme-color)]/10 px-3 py-1 rounded-full border border-[var(--theme-color)]/20">
+                เปิดใช้งาน {popupAnnouncementItems.filter((b) => b.enabled && b.imageUrl && isPopupBannerWithinSchedule(b)).length} / 5 ป้าย
               </span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               {popupAnnouncementItems.map((banner) => {
                 const isSelected = selectedBannerId === banner.id;
-                const isBannerActive = banner.enabled && Boolean(banner.imageUrl);
+                const isBannerActive = banner.enabled && Boolean(banner.imageUrl) && isPopupBannerWithinSchedule(banner);
                 return (
                   <button
                     key={banner.id}
@@ -1048,6 +1121,11 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
                         ? "📲 โหลดแอป"
                         : "🔗 ลิงก์เว็บ"}
                     </span>
+                    {(banner.startAt || banner.endAt) && (
+                      <span className="mt-1 text-[9px] leading-tight text-center text-zinc-500">
+                        {isBannerActive ? "ตามเวลาอยู่" : "นอกช่วงเวลา"}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1221,6 +1299,38 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
                       ไม่ต้องระบุลิงก์สำหรับ Action Type นี้
                     </div>
                   )}
+                </div>
+
+                {/* Banner Schedule */}
+                <div className="grid grid-cols-1 gap-4 border-t border-zinc-100 pt-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor={`banner-start-${currentBanner.id}`} className="text-xs font-semibold text-[#0B0B0B]">
+                      เริ่มแสดงป้ายนี้
+                    </Label>
+                    <Input
+                      id={`banner-start-${currentBanner.id}`}
+                      type="datetime-local"
+                      value={toDateTimeLocalValue(currentBanner.startAt)}
+                      onChange={(e) => handleUpdatePopupBanner(currentBanner.id, { startAt: e.target.value })}
+                      className="h-9 rounded-lg border-[#E5E7EB] bg-white text-xs"
+                      disabled={isPending || isSaving}
+                    />
+                    <p className="text-[11px] text-zinc-500">เว้นว่างเพื่อให้แสดงได้ทันทีเมื่อเปิดใช้งาน</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`banner-end-${currentBanner.id}`} className="text-xs font-semibold text-[#0B0B0B]">
+                      สิ้นสุดการแสดงป้ายนี้
+                    </Label>
+                    <Input
+                      id={`banner-end-${currentBanner.id}`}
+                      type="datetime-local"
+                      value={toDateTimeLocalValue(currentBanner.endAt)}
+                      onChange={(e) => handleUpdatePopupBanner(currentBanner.id, { endAt: e.target.value })}
+                      className="h-9 rounded-lg border-[#E5E7EB] bg-white text-xs"
+                      disabled={isPending || isSaving}
+                    />
+                    <p className="text-[11px] text-zinc-500">เว้นว่างเพื่อไม่กำหนดวันหมดอายุ</p>
+                  </div>
                 </div>
               </div>
             );
@@ -1720,28 +1830,32 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
       <div className="space-y-4">
         <div>
           <h3 className="text-lg font-semibold text-[#0B0B0B]">การตั้งค่า Slip2Go API</h3>
-          <p className="text-sm text-[#6B7280]">ตั้งค่า API สำหรับตรวจสอบสลิปโอนเงินแบบอัปโหลดรูปภาพ</p>
+          <p className="text-sm text-[#6B7280]">ตั้งค่า API สำหรับตรวจสอบสลิปโอนเงินแบบอัปโหลดรูปภาพ โดยค่าจะถูกใช้จากฝั่งเซิร์ฟเวอร์</p>
         </div>
         <div className="space-y-4 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-6">
-          {groupedSettings.slip2go.map((setting) => (
-            <div key={setting.key} className="space-y-2">
-              <Label htmlFor={`setting-${setting.key}`} className="text-sm text-[#0B0B0B]">
-                {setting.description ?? setting.key}
-                {setting.key.includes("secret") ? (
-                  <span className="ml-2 text-xs text-[#6B7280]">(จะไม่แสดงค่าปัจจุบัน)</span>
+          {SLIP2GO_SETTING_FIELDS.map((field) => (
+            <div key={field.key} className="space-y-2">
+              <Label htmlFor={`setting-${field.key}`} className="text-sm text-[#0B0B0B]">
+                {field.label}
+                {field.key.includes("secret") ? (
+                  <span className="ml-2 text-xs text-[#6B7280]">(กรอกใหม่เพื่อเปลี่ยน API Key)</span>
                 ) : null}
               </Label>
               <Input
-                id={`setting-${setting.key}`}
-                type={setting.key.includes("secret") ? "password" : "text"}
-                value={drafts[setting.key] ?? ""}
-                onChange={(e) => handleDraftChange(setting.key, e.target.value)}
-                placeholder={setting.description ?? setting.key}
+                id={`setting-${field.key}`}
+                type={field.key.includes("secret") ? "password" : "url"}
+                value={drafts[field.key] ?? ""}
+                onChange={(e) => handleDraftChange(field.key, e.target.value)}
+                placeholder={field.placeholder}
                 className="rounded-xl border-[var(--theme-color)]/30 bg-white focus-visible:ring-[var(--theme-color)]"
                 disabled={isPending || isSaving}
               />
+              <p className="text-xs text-[#6B7280]">{field.help}</p>
             </div>
           ))}
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+            เมื่อบันทึก API Key แล้ว ระบบตรวจสลิปที่หน้าเติมเงินจะใช้ค่า Slip2Go นี้โดยอัตโนมัติ หากยังไม่กรอกคีย์ ระบบจะไม่ส่งคำขอไปยังผู้ให้บริการ
+          </div>
         </div>
       </div>
 
@@ -1750,25 +1864,26 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
       <div className="space-y-4">
         <div>
           <h3 className="text-lg font-semibold text-[#0B0B0B]">ข้อมูลบัญชีธนาคาร</h3>
-          <p className="text-sm text-[#6B7280]">ตั้งค่าข้อมูลบัญชีธนาคารสำหรับรับเงินโอน</p>
+          <p className="text-sm text-[#6B7280]">ตั้งค่าข้อมูลบัญชีธนาคารสำหรับรับเงินโอนที่จะแสดงในหน้าเติมพ้อยท์</p>
         </div>
         <div className="space-y-4 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-6">
-          {groupedSettings.bankAccount.map((setting) => (
-            <div key={setting.key} className="space-y-2">
-              <Label htmlFor={`setting-${setting.key}`} className="text-sm text-[#0B0B0B]">
-                {setting.description ?? setting.key}
-              </Label>
+          {BANK_ACCOUNT_SETTING_FIELDS.map((field) => (
+            <div key={field.key} className="space-y-2">
+              <Label htmlFor={`setting-${field.key}`} className="text-sm text-[#0B0B0B]">{field.label}</Label>
               <Input
-                id={`setting-${setting.key}`}
+                id={`setting-${field.key}`}
                 type="text"
-                value={drafts[setting.key] ?? ""}
-                onChange={(e) => handleDraftChange(setting.key, e.target.value)}
-                placeholder={setting.description ?? setting.key}
+                value={drafts[field.key] ?? ""}
+                onChange={(e) => handleDraftChange(field.key, e.target.value)}
+                placeholder={field.placeholder}
                 className="rounded-xl border-[var(--theme-color)]/30 bg-white focus-visible:ring-[var(--theme-color)]"
                 disabled={isPending || isSaving}
               />
             </div>
           ))}
+          <p className="rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-xs text-pink-800">
+            ข้อมูลที่บันทึกตรงนี้จะถูกใช้แสดงบนหน้าเติมพ้อยท์ และใช้เป็นบัญชีปลายทางสำรองสำหรับตรวจสอบสลิป หากไม่ได้กำหนดเลขบัญชีตรวจสอบแยกต่างหาก
+          </p>
         </div>
       </div>
 
@@ -1777,23 +1892,28 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
       <div className="space-y-4">
         <div>
           <h3 className="text-lg font-semibold text-[#0B0B0B]">การตั้งค่าการเติมเงิน</h3>
-          <p className="text-sm text-[#6B7280]">ตั้งค่าบัญชีผู้รับเงินและจำนวนเงินขั้นต่ำ</p>
+          <p className="text-sm text-[#6B7280]">ตั้งค่าบัญชีผู้รับเงินและจำนวนเงินขั้นต่ำสำหรับระบบเติมพ้อยท์</p>
         </div>
         <div className="space-y-4 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-6">
-          {groupedSettings.payment.map((setting) => (
-            <div key={setting.key} className="space-y-2">
-              <Label htmlFor={`setting-${setting.key}`} className="text-sm text-[#0B0B0B]">
-                {setting.description ?? setting.key}
-              </Label>
+          {TOPUP_SETTING_FIELDS.map((field) => (
+            <div key={field.key} className="space-y-2">
+              <Label htmlFor={`setting-${field.key}`} className="text-sm text-[#0B0B0B]">{field.label}</Label>
               <Input
-                id={`setting-${setting.key}`}
-                type={setting.key.includes("amount") ? "number" : "text"}
-                value={drafts[setting.key] ?? ""}
-                onChange={(e) => handleDraftChange(setting.key, e.target.value)}
-                placeholder={setting.description ?? setting.key}
+                id={`setting-${field.key}`}
+                type={field.type}
+                min={field.type === "number" ? "0" : undefined}
+                step={field.type === "number" ? "0.01" : undefined}
+                value={drafts[field.key] ?? ""}
+                onChange={(e) => handleDraftChange(field.key, e.target.value)}
+                placeholder={field.placeholder}
                 className="rounded-xl border-[var(--theme-color)]/30 bg-white focus-visible:ring-[var(--theme-color)]"
                 disabled={isPending || isSaving}
               />
+              {field.key === "expected_receiver_account" ? (
+                <p className="text-xs text-[#6B7280]">ถ้าเว้นว่าง ระบบจะใช้เลขบัญชีจากส่วนข้อมูลบัญชีธนาคารด้านบน</p>
+              ) : (
+                <p className="text-xs text-[#6B7280]">ค่าปัจจุบันของระบบเมื่อไม่กำหนดคือ 49 บาท</p>
+              )}
             </div>
           ))}
         </div>
