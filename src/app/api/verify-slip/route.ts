@@ -318,11 +318,13 @@ export async function POST(request: NextRequest) {
       slip2goSecretSetting,
       slip2goEndpointSetting,
       expectedAccount,
+      bankAccountNumber,
       minimumAmountStr,
     ] = await Promise.all([
       getSettingValue("slip2go_api_secret"),
       getSettingValue("slip2go_api_endpoint"),
       getSettingValue("expected_receiver_account"),
+      getSettingValue("bank_account_number"),
       getSettingValue("minimum_topup_amount"),
     ]);
 
@@ -346,10 +348,11 @@ export async function POST(request: NextRequest) {
       "https://connect.slip2go.com/api/verify-slip/qr-image/info";
 
     const minimumAmount = parseFloat(minimumAmountStr || "49") || 49;
+    const configuredReceiverAccount = expectedAccount || bankAccountNumber || null;
 
     verificationPhase = "provider-verify";
     let slip2goResponse = await verifySlipWithSlip2Go(
-      createSlip2GoFormData(slipFile, expectedAccount, true),
+      createSlip2GoFormData(slipFile, configuredReceiverAccount, true),
       {
         endpoint: slip2goEndpoint,
         secretKey: slip2goSecret,
@@ -453,7 +456,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!expectedAccount || !validateBankAccount(expectedAccount, receiverAccount)) {
+    if (!configuredReceiverAccount || !validateBankAccount(configuredReceiverAccount, receiverAccount)) {
       throw new SlipVerificationError(
         "บัญชีผู้รับเงินไม่ถูกต้อง",
         ErrorCodes.INVALID_ACCOUNT
