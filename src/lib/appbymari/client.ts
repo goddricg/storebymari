@@ -6,6 +6,7 @@ import {
   type AppByMariRemoteProduct,
 } from "./types";
 import { ensureAppByMariSchema } from "./schema";
+import type { SupportCase, SupportCaseType } from "@/lib/support/types";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -193,6 +194,81 @@ export async function fetchAppByMariBalance(input: {
     throw new AppByMariApiError(result.status, "Store By Mari balance response was invalid");
   }
   return Math.max(0, balance);
+}
+
+export type AppByMariSupportCaseForwardResult = {
+  remoteCaseId: string | null;
+  remoteCaseCode: string | null;
+};
+
+type AppByMariSupportCaseInput = Pick<
+  SupportCase,
+  | "caseCode"
+  | "orderId"
+  | "productName"
+  | "productTypeId"
+  | "accountEmail"
+  | "accountPassword"
+  | "expirationDate"
+  | "screenNumber"
+  | "problemDescription"
+> & {
+  caseType: SupportCaseType;
+  shopName: string | null;
+};
+
+function normalizeSupportEmail(value: string | null): string | null {
+  const normalized = asText(value);
+  return normalized && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
+    ? normalized
+    : null;
+}
+
+/** Forward one Store By Mari support case into AppByMari's central queue. */
+export async function forwardAppByMariSupportCase(input: {
+  provider?: ApiProvider | null;
+  apiKey?: string;
+  caseData: AppByMariSupportCaseInput;
+}): Promise<AppByMariSupportCaseForwardResult> {
+  const provider = input.provider ?? await getAppByMariProvider();
+  const apiKey = resolveApiKey(provider, input.apiKey);
+  const caseData = input.caseData;
+  const result = await requestJson("support-cases", apiKey, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": `storebymari-support-${caseData.caseCode}`,
+    },
+    body: JSON.stringify({
+      orderId: caseData.orderId,
+      productName: caseData.productName,
+      productTypeId: caseData.productTypeId,
+      accountEmail: normalizeSupportEmail(caseData.accountEmail),
+      accountPassword: caseData.accountPassword,
+      expirationDate: caseData.expirationDate,
+      caseType: caseData.caseType,
+      screenNumber: caseData.screenNumber,
+      problemDescription: caseData.problemDescription,
+      shopName: caseData.shopName,
+    }),
+  });
+
+  if (result.body.success !== true && result.body.ok !== true) {
+    throw new AppByMariApiError(result.status, "AppByMari did not accept the support case");
+  }
+
+  const remoteCase = asRecord(result.body.case);
+  const remoteCaseId = remoteCase ? asText(remoteCase.id) : null;
+  const remoteCaseCode = remoteCase
+    ? asText(remoteCase.caseCode) ?? asText(remoteCase.case_code)
+    : null;
+  if (!remoteCaseId && !remoteCaseCode) {
+    throw new AppByMariApiError(result.status, "AppByMari returned an invalid support case response");
+  }
+
+  return {
+    remoteCaseId,
+    remoteCaseCode,
+  };
 }
 
 export async function buyAppByMariProduct(input: {

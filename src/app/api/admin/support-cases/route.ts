@@ -8,6 +8,8 @@ import {
 } from "@/lib/audit/admin-audit";
 import { createUserNotification } from "@/lib/notifications/repository";
 import { dispatchNotificationToUser } from "@/lib/push/dispatch";
+import { ensureSupportCenterSchema } from "@/lib/support/center-schema";
+import { forwardSupportCaseToCenter } from "@/lib/support/center-forwarding";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -26,6 +28,7 @@ function getAdminSupportSiteScope() {
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
+    await ensureSupportCenterSchema();
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -99,6 +102,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const me = await requireAdmin();
+    await ensureSupportCenterSchema();
 
     const body = await request.json();
     const { id, action, ...updates } = body;
@@ -112,6 +116,47 @@ export async function PATCH(request: NextRequest) {
 
     const supportSiteScope = getAdminSupportSiteScope();
     const adminName = me.displayName || me.email?.split("@")[0] || "Admin";
+
+    if (action === "forwardToCenter") {
+      const caseToForward = await findSupportCaseById(id, supportSiteScope);
+      if (!caseToForward) {
+        return NextResponse.json({ ok: false, message: "ไม่พบเคสที่ต้องการส่งไปส่วนกลาง" }, { status: 404 });
+      }
+
+      try {
+        const forwardResult = await forwardSupportCaseToCenter(caseToForward);
+        const refreshedCase = await findSupportCaseById(id, supportSiteScope);
+
+        await recordAdminAuditEvent({
+          actor: me,
+          action: "SUPPORT_CASE_FORWARD_TO_CENTER",
+          category: "support",
+          severity: "low",
+          entityType: "support_case",
+          entityId: id,
+          entityLabel: caseToForward.caseCode,
+          before: { centerSyncStatus: caseToForward.centerSyncStatus ?? "pending" },
+          after: {
+            centerSyncStatus: forwardResult.status,
+            centerCaseCode: forwardResult.remoteCaseCode,
+          },
+          details: "Forwarded support case to the AppByMari central support queue",
+          ...getAdminAuditRequestContext(request),
+        });
+
+        return NextResponse.json({
+          ok: true,
+          message: forwardResult.alreadySent
+            ? "เคสนี้ถูกส่งไปศูนย์กลางแล้ว"
+            : "ส่งเคสไปศูนย์กลาง AppByMari สำเร็จ",
+          case: refreshedCase ?? caseToForward,
+          center: forwardResult,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "ไม่สามารถส่งเคสไปศูนย์กลางได้";
+        return NextResponse.json({ ok: false, message }, { status: 502 });
+      }
+    }
 
     if (action === "claim") {
       const claimResult = await claimSupportCase(id, { id: me.id, name: adminName }, supportSiteScope);

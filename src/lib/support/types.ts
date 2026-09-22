@@ -2,6 +2,8 @@ export type SupportCaseType = 'screen' | 'account';
 
 export type SupportCaseStatus = 'pending' | 'in_progress' | 'resolved';
 
+export type SupportCaseCenterSyncStatus = 'pending' | 'sent' | 'failed';
+
 export type SupportCaseRecord = {
   id: string;
   case_code: string;
@@ -22,6 +24,10 @@ export type SupportCaseRecord = {
   updated_at: string;
   site_id?: string | null;
   shop_name?: string | null;
+  center_case_id?: string | null;
+  center_case_code?: string | null;
+  center_synced_at?: string | null;
+  center_sync_error?: string | null;
   handled_by_id?: string | null;
   handled_by_name?: string | null;
   handled_at?: string | null;
@@ -54,6 +60,11 @@ export type SupportCase = {
   attachments?: SupportCaseAttachment[];
   siteId?: string | null;
   shopName?: string | null;
+  centerCaseId?: string | null;
+  centerCaseCode?: string | null;
+  centerSyncedAt?: string | null;
+  centerSyncError?: string | null;
+  centerSyncStatus?: SupportCaseCenterSyncStatus;
   handledById?: string | null;
   handledByName?: string | null;
   handledAt?: string | null;

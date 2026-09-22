@@ -13,6 +13,7 @@ import type {
 } from "./types";
 import { randomUUID } from "crypto";
 import { extractProductDetails } from "./date-parser";
+import { ensureSupportCenterSchema } from "./center-schema";
 
 function toSupportCaseAttachment(row: any): SupportCaseAttachment {
   return {
@@ -39,6 +40,9 @@ function toSupportCase(row: any, attachments?: SupportCaseAttachment[]): Support
 
   const userName = user?.displayName || user?.email || (row.user_id ? `ผู้ใช้ (ID: ${row.user_id.slice(0, 8)})` : "ผู้ใช้ทั่วไป / ไม่ระบุ");
   const userEmail = user?.email || null;
+  const centerCaseId = row.center_case_id ?? null;
+  const centerCaseCode = row.center_case_code ?? null;
+  const centerSyncError = row.center_sync_error ?? null;
 
   return {
     id: row.id,
@@ -61,6 +65,15 @@ function toSupportCase(row: any, attachments?: SupportCaseAttachment[]): Support
     attachments: attachments || [],
     siteId: row.site_id ?? null,
     shopName: row.shop_name ?? null,
+    centerCaseId,
+    centerCaseCode,
+    centerSyncedAt: row.center_synced_at ? new Date(row.center_synced_at).toISOString() : null,
+    centerSyncError,
+    centerSyncStatus: centerCaseId || centerCaseCode
+      ? "sent"
+      : centerSyncError
+        ? "failed"
+        : "pending",
     handledById: row.handled_by_id ?? null,
     handledByName: row.handled_by_name ?? null,
     handledAt: row.handled_at ? new Date(row.handled_at).toISOString() : null,
@@ -106,6 +119,7 @@ export async function createSupportCase(
   userId: string
 ): Promise<SupportCase> {
   try {
+    await ensureSupportCenterSchema();
     const year = new Date().getFullYear();
     
     // Find last case code for current year to determine sequence

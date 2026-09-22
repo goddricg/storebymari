@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/server";
 import { createSupportCase } from "@/lib/support/repository";
+import {
+  forwardSupportCaseToCenter,
+  getStoreNameForCenter,
+} from "@/lib/support/center-forwarding";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -28,6 +32,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const validated = createSchema.parse(body);
+    const shopName = await getStoreNameForCenter();
 
     const caseData = await createSupportCase({
       ...validated,
@@ -45,14 +50,38 @@ export async function POST(request: NextRequest) {
       verifiedWarrantyStatus: validated.verifiedWarrantyStatus ?? null,
       verifiedRemainingDays: validated.verifiedRemainingDays ?? null,
       attachmentUrls: validated.attachmentUrls || [],
+      shopName,
     }, user.id);
+
+    let centerForwarded = false;
+    let centerCaseCode: string | null = null;
+    try {
+      const forwarded = await forwardSupportCaseToCenter(caseData);
+      centerForwarded = forwarded.status === "sent";
+      centerCaseCode = forwarded.remoteCaseCode;
+    } catch (error) {
+      // The local case is already persisted. Keep the customer's report
+      // successful and expose a retryable state to Admin instead of creating
+      // a duplicate local case when the central API is temporarily offline.
+      console.error("[Support Center] Failed to forward new support case", {
+        caseId: caseData.id,
+        caseCode: caseData.caseCode,
+        code: error instanceof Error ? error.name : "unknown",
+      });
+    }
 
     return NextResponse.json({
       ok: true,
-      message: "ระบบได้รับข้อมูลแล้ว ตัวแทนจะตรวจสอบให้เร็วที่สุดค่ะ",
+      message: centerForwarded
+        ? "ระบบได้รับข้อมูลแล้ว และส่งเรื่องให้ศูนย์กลางเรียบร้อยค่ะ"
+        : "ระบบได้รับข้อมูลแล้ว ทีมงานจะตรวจสอบให้เร็วที่สุดค่ะ",
       case: {
         id: caseData.id,
         caseCode: caseData.caseCode,
+      },
+      center: {
+        status: centerForwarded ? "sent" : "failed",
+        caseCode: centerCaseCode,
       },
     });
   } catch (error) {

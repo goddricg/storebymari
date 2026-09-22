@@ -316,6 +316,51 @@ test("tests the connection and sends idempotency key for a remote buy", async ()
   assert.equal(JSON.stringify(requests[2].init?.body).includes("test-key"), false);
 });
 
+test("forwards a support case with the Store By Mari shop name", async () => {
+  let request: { url: string; init?: RequestInit } | null = null;
+  globalThis.fetch = (async (input, init) => {
+    request = { url: String(input), init };
+    return response({
+      success: true,
+      case: { id: "center-case-1", caseCode: "CASE-2026-90001" },
+    });
+  }) as typeof fetch;
+
+  const forwarded = await client.forwardAppByMariSupportCase({
+    apiKey: "test-key",
+    caseData: {
+      caseCode: "CASE-2026-00001",
+      orderId: "order-1",
+      productName: "Netflix 30 Day",
+      productTypeId: "netflix-30",
+      accountEmail: "customer@example.test",
+      accountPassword: "secret-value",
+      expirationDate: "2026-10-01",
+      caseType: "account",
+      screenNumber: null,
+      problemDescription: "เข้าบัญชีไม่ได้",
+      shopName: "Store By Mari",
+    },
+  });
+
+  assert.ok(request);
+  const capturedRequest = request as { url: string; init?: RequestInit };
+  assert.equal(capturedRequest.url, `${APPBYMARI_API_BASE_URL}/support-cases`);
+  assert.equal(new Headers(capturedRequest.init?.headers).get("x-api-key"), "test-key");
+  assert.equal(
+    new Headers(capturedRequest.init?.headers).get("Idempotency-Key"),
+    "storebymari-support-CASE-2026-00001",
+  );
+  const body = JSON.parse(String(capturedRequest.init?.body)) as Record<string, unknown>;
+  assert.equal(body.shopName, "Store By Mari");
+  assert.equal(body.problemDescription, "เข้าบัญชีไม่ได้");
+  assert.equal(body.accountPassword, "secret-value");
+  assert.deepEqual(forwarded, {
+    remoteCaseId: "center-case-1",
+    remoteCaseCode: "CASE-2026-90001",
+  });
+});
+
 test("deducts StoreByMari points only after remote success and replays one order", async () => {
   await seedProduct();
   let buyCalls = 0;

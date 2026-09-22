@@ -45,6 +45,7 @@ import {
   ExternalLink,
   Copy,
   Check,
+  Send,
 } from "lucide-react";
 import PushSubscriptionControl from "@/components/push/push-subscription-control";
 import { useSession } from "@/lib/auth/use-session";
@@ -334,6 +335,37 @@ export default function SupportCasesTable() {
         fetchCases();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "เกิดข้อผิดพลาด");
+      }
+    });
+  };
+
+  const handleForwardToCenter = () => {
+    if (!selectedCase) return;
+
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/admin/support-cases", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: selectedCase.id, action: "forwardToCenter" }),
+        });
+        const data = (await response.json()) as {
+          ok: boolean;
+          message?: string;
+          case?: SupportCase;
+        };
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.message || "ไม่สามารถส่งเคสไปศูนย์กลางได้");
+        }
+
+        if (data.case) {
+          setSelectedCase(data.case);
+          setCases((prev) => prev.map((item) => (item.id === data.case?.id ? data.case! : item)));
+        }
+        toast.success(data.message || "ส่งเคสไปศูนย์กลางสำเร็จ");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "ไม่สามารถส่งเคสไปศูนย์กลางได้");
       }
     });
   };
@@ -1118,6 +1150,44 @@ export default function SupportCasesTable() {
                       </Select>
                     </div>
                   </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--theme-color)]/20 bg-white/70 px-3 py-2 dark:bg-black/20">
+                    <div className="flex min-w-0 items-center gap-2 text-xs">
+                      <span className="font-semibold text-[#6B7280] dark:text-gray-400">ศูนย์กลาง AppByMari:</span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          selectedCase.centerSyncStatus === "sent"
+                            ? "border-emerald-500 text-emerald-700 dark:text-emerald-300"
+                            : selectedCase.centerSyncStatus === "failed"
+                              ? "border-rose-500 text-rose-700 dark:text-rose-300"
+                              : "border-amber-500 text-amber-700 dark:text-amber-300"
+                        }
+                      >
+                        {selectedCase.centerSyncStatus === "sent"
+                          ? `ส่งแล้ว${selectedCase.centerCaseCode ? ` (${selectedCase.centerCaseCode})` : ""}`
+                          : selectedCase.centerSyncStatus === "failed"
+                            ? "ส่งไม่สำเร็จ / กดส่งซ้ำ"
+                            : "ยังไม่ได้ส่ง"}
+                      </Badge>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleForwardToCenter}
+                      disabled={isPending || selectedCase.centerSyncStatus === "sent"}
+                      className="h-8 text-xs border-[var(--theme-color)]/50 text-[var(--theme-color)] hover:bg-[var(--theme-color)] hover:text-white"
+                    >
+                      {isPending ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Send className="mr-1 size-3" />}
+                      {selectedCase.centerSyncStatus === "sent" ? "ส่งเข้า Center แล้ว" : "ส่งเข้า Center"}
+                    </Button>
+                  </div>
+                  {selectedCase.centerSyncError && selectedCase.centerSyncStatus === "failed" && (
+                    <p className="text-[10px] text-rose-600 dark:text-rose-300">
+                      สาเหตุล่าสุด: {selectedCase.centerSyncError}
+                    </p>
+                  )}
 
                   {/* QUICK REPLY PRESETS */}
                   <div className="space-y-1.5">

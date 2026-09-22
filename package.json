@@ -17,6 +17,7 @@
     "migrate:topup-receipts": "node scripts/migrate-topup-receipts.js",
     "migrate:purchase-cases": "node scripts/migrate-purchase-cases.js",
     "migrate:support-case-notifications": "node scripts/migrate-support-case-notifications.js",
+    "migrate:support-case-center": "node scripts/migrate-support-case-center.js",
     "migrate:appbymari": "node scripts/migrate-appbymari.js",
     "backfill:purchase-cases": "tsx scripts/backfill-purchase-cases.ts",
     "backfill:topup-receipts": "tsx scripts/backfill-topup-receipts.ts",
