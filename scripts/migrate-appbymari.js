@@ -13,7 +13,6 @@ if (missingEnv.length > 0) {
 
 const migrationFiles = [
   "27_add_appbymari_storefront.sql",
-  "28_add_appbymari_product_image_overrides.sql",
 ];
 
 async function main() {
@@ -31,6 +30,19 @@ async function main() {
     for (const migrationFile of migrationFiles) {
       const migrationPath = path.join(process.cwd(), "migrations", migrationFile);
       await connection.query(fs.readFileSync(migrationPath, "utf8"));
+    }
+    const [columnsBefore] = await connection.query(
+      `SELECT COUNT(*) AS image_override_columns
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'appbymari_products'
+         AND COLUMN_NAME = 'image_override_url'`,
+    );
+    if (Number(columnsBefore[0]?.image_override_columns ?? 0) === 0) {
+      await connection.query(
+        `ALTER TABLE appbymari_products
+           ADD COLUMN image_override_url LONGTEXT NULL AFTER image_url`,
+      );
     }
     const [rows] = await connection.query(
       `SELECT COUNT(*) AS created_tables

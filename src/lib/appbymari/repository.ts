@@ -11,6 +11,7 @@ import {
   type AppByMariRemoteProduct,
   type AppByMariStorefrontProduct,
 } from "./types";
+import { ensureAppByMariSchema } from "./schema";
 
 type AppByMariProductRow = RowDataPacket & {
   id: string;
@@ -105,6 +106,7 @@ function toRowProduct(row: AppByMariProductRow): Product {
 }
 
 export async function getAppByMariProductsForAdmin(siteId = "main"): Promise<AppByMariAdminProduct[]> {
+  await ensureAppByMariSchema();
   const [rows] = await pool.execute<AppByMariProductRow[]>(
     `SELECT * FROM appbymari_products
      WHERE site_id = ?
@@ -119,6 +121,7 @@ export async function getAppByMariProductStats(siteId = "main"): Promise<{
   enabled: number;
   lastSyncedAt: string | null;
 }> {
+  await ensureAppByMariSchema();
   const [rows] = await pool.execute<RowDataPacket[]>(
     `SELECT COUNT(*) AS total,
             SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) AS enabled,
@@ -144,6 +147,7 @@ export async function upsertAppByMariProducts(
   providerId: string,
   siteId = "main",
 ): Promise<number> {
+  await ensureAppByMariSchema();
   const now = new Date();
   for (const item of items) {
     const sourceTypeId = item.sourceTypeId.trim();
@@ -189,6 +193,7 @@ export async function updateAppByMariProductSettings(input: {
   isEnabled?: boolean;
   imageUrl?: string | null;
 }): Promise<AppByMariAdminProduct | null> {
+  await ensureAppByMariSchema();
   const siteId = input.siteId ?? getSiteId();
   const updates: string[] = [];
   const params: any[] = [];
@@ -223,6 +228,7 @@ export async function updateAppByMariProductSettings(input: {
 }
 
 export async function findAppByMariStorefrontProduct(typeId: string, siteId = getSiteId()): Promise<Product | null> {
+  await ensureAppByMariSchema();
   const sourceTypeId = parseAppByMariStorefrontTypeId(typeId);
   if (!sourceTypeId || siteId !== "main") return null;
   const [rows] = await pool.execute<AppByMariProductRow[]>(
@@ -239,6 +245,7 @@ export async function fetchEnabledAppByMariProducts(input: {
   category?: string | null;
   searchTerm?: string | null;
 } = {}): Promise<Product[]> {
+  await ensureAppByMariSchema();
   const siteId = input.siteId ?? getSiteId();
   if (siteId !== "main") return [];
   const clauses = ["site_id = ?", "is_enabled = 1"];
@@ -267,6 +274,7 @@ export async function getAppByMariProductRowForPurchase(input: {
   connection: import("mysql2/promise").PoolConnection;
   lock?: boolean;
 }): Promise<AppByMariProductRow | null> {
+  await ensureAppByMariSchema();
   const siteId = input.siteId ?? getSiteId();
   const [rows] = await input.connection.execute<AppByMariProductRow[]>(
     `SELECT * FROM appbymari_products
@@ -283,6 +291,7 @@ export async function getAppByMariProductRowById(input: {
   connection: import("mysql2/promise").PoolConnection;
   lock?: boolean;
 }): Promise<AppByMariProductRow | null> {
+  await ensureAppByMariSchema();
   const siteId = input.siteId ?? getSiteId();
   const [rows] = await input.connection.execute<AppByMariProductRow[]>(
     `SELECT * FROM appbymari_products

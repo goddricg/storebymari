@@ -5,6 +5,7 @@ import {
   APPBYMARI_PROVIDER_NAME,
   type AppByMariRemoteProduct,
 } from "./types";
+import { ensureAppByMariSchema } from "./schema";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -124,6 +125,7 @@ function normalizeRemoteProduct(value: unknown): AppByMariRemoteProduct | null {
 }
 
 export async function getAppByMariProvider(): Promise<ApiProvider | null> {
+  await ensureAppByMariSchema();
   return getApiProviderByName(APPBYMARI_PROVIDER_NAME);
 }
 

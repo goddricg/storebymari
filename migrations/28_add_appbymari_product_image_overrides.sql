@@ -1,5 +1,6 @@
 -- StoreByMari presentation override for AppByMari product images.
 -- The source image remains sync-owned; this column survives future syncs.
-
-ALTER TABLE appbymari_products
-  ADD COLUMN IF NOT EXISTS image_override_url LONGTEXT NULL AFTER image_url;
+--
+-- The migration runner checks INFORMATION_SCHEMA before issuing the ALTER so
+-- this migration remains compatible with MySQL/MariaDB versions that do not
+-- support ALTER TABLE ... ADD COLUMN IF NOT EXISTS.
