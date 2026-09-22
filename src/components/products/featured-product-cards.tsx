@@ -12,7 +12,6 @@ import { ProductPriceDisplay } from "@/components/products/product-price-display
 import { VipBadge } from "@/components/products/vip-badge";
 import { ProductImageLightbox } from "@/components/products/product-image-lightbox";
 import { useLiveProductStock } from "@/components/products/product-stock-realtime-provider";
-import { getProductCardSummary } from "@/components/products/product-card-copy";
 import { cn, normalizeNewlines } from "@/lib/utils";
 
 export type FeaturedProduct = {
@@ -44,7 +43,6 @@ export function FeaturedProductCard({
   );
   const logoUrl = product.imageUrl ?? "/logos/default.svg";
   const hasVipPrice = priceVip != null;
-  const productSummary = getProductCardSummary(product.details);
 
   return (
     <Card
@@ -98,22 +96,12 @@ export function FeaturedProductCard({
           <CardTitle
             data-card-layer="title"
             className={cn(
-              "dreamy-compact-product-title relative z-40 min-h-[2.45rem] line-clamp-2 text-pretty whitespace-pre-line break-words [overflow-wrap:anywhere] text-[13px] font-semibold leading-[1.28] sm:text-base sm:leading-[1.3]",
+              "dreamy-compact-product-title relative z-40 min-h-[2.45rem] text-center line-clamp-2 text-pretty whitespace-pre-line break-words [overflow-wrap:anywhere] text-[13px] font-semibold leading-[1.28] sm:text-base sm:leading-[1.3]",
               isOutOfStock ? "text-gray-500" : "text-[#0B0B0B]"
             )}
           >
             <span title={normalizeNewlines(product.name)}>{normalizeNewlines(product.name)}</span>
           </CardTitle>
-          <p
-            data-card-layer="description"
-            title={productSummary}
-            className={cn(
-              "storefront-product-card-description relative z-40 min-h-[2.3rem] line-clamp-2 break-words text-[11px] leading-[1.35] sm:text-xs sm:leading-[1.4]",
-              isOutOfStock ? "text-gray-500" : "text-white/75"
-            )}
-          >
-            {productSummary}
-          </p>
           <div className="storefront-product-card-commerce flex flex-col gap-1.5 sm:gap-2">
             <div data-card-layer="price" className="dreamy-price-capsule storefront-price-tag relative z-10">
               <ProductPriceDisplay
