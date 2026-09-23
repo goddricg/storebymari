@@ -17,6 +17,7 @@ type Setting = {
   value: string | null;
   description: string | null;
   updatedAt: string;
+  configured?: boolean;
 };
 
 type SettingsTableProps = {
@@ -39,7 +40,7 @@ const SLIP2GO_SETTING_FIELDS = [
     key: "slip2go_api_secret",
     label: "Slip2Go API Key / Secret",
     placeholder: "วาง API Key ของ Slip2Go ที่นี่",
-    help: "ระบบจะส่งคีย์นี้จากฝั่งเซิร์ฟเวอร์เท่านั้น ห้ามใส่คีย์ในโค้ดหน้าเว็บ",
+    help: "คีย์ถูกเก็บและเรียกใช้ฝั่งเซิร์ฟเวอร์เท่านั้น ระบบจะไม่ส่งค่าคีย์กลับมาในหน้าเว็บ; กรอกใหม่เมื่อต้องการเปลี่ยน",
   },
 ] as const;
 
@@ -193,6 +194,7 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
 
       const payload = (await res.json()) as { message: string };
       toast.success(payload.message ?? "บันทึกการตั้งค่าเรียบร้อย");
+      setDrafts((prev) => ({ ...prev, slip2go_api_secret: "" }));
       fetchSettings();
     } catch (error) {
       console.error("Save settings error:", error);
@@ -1844,6 +1846,7 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
               <Input
                 id={`setting-${field.key}`}
                 type={field.key.includes("secret") ? "password" : "url"}
+                autoComplete={field.key.includes("secret") ? "new-password" : undefined}
                 value={drafts[field.key] ?? ""}
                 onChange={(e) => handleDraftChange(field.key, e.target.value)}
                 placeholder={field.placeholder}
@@ -1851,6 +1854,14 @@ export default function SettingsTable({ isMainSite }: SettingsTableProps) {
                 disabled={isPending || isSaving}
               />
               <p className="text-xs text-[#6B7280]">{field.help}</p>
+              {field.key === "slip2go_api_secret" ? (
+                <p className="text-xs font-medium text-[#6B7280]" role="status">
+                  สถานะ: {settings.find((setting) => setting.key === field.key)?.configured ? "ตั้งค่าแล้ว" : "ยังไม่ได้ตั้งค่า"}
+                  {settings.find((setting) => setting.key === field.key)?.configured
+                    ? " — เว้นช่องนี้ว่างไว้เพื่อคงคีย์เดิม"
+                    : " — วาง Secret Key จาก Slip2Go เพื่อเปิดใช้ตรวจสลิปเติมเงิน"}
+                </p>
+              ) : null}
             </div>
           ))}
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">

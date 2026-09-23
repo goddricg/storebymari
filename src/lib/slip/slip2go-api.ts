@@ -60,7 +60,7 @@ export async function verifySlipWithSlip2Go(
 
     const response = await axios.post(endpoint, formData, {
       headers: {
-        Authorization: `Bearer ${secretKey}`,
+        Authorization: secretKey,
       },
       responseType: "json",
       timeout: 20_000,

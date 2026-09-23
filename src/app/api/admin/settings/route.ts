@@ -30,6 +30,10 @@ function noStoreJson(body: unknown, status = 200) {
   return response;
 }
 
+function isSensitiveSettingKey(key: string): boolean {
+  return /(?:secret|api[_-]?key|token|password|private[_-]?key)/i.test(key);
+}
+
 export async function GET() {
   try {
     const me = await getCurrentUser();
@@ -51,7 +55,17 @@ export async function GET() {
         ? settings
         : settings.filter((setting) => !isMainSiteOnlySettingKey(setting.key));
 
-    return noStoreJson({ settings: visibleSettings });
+    const safeSettings = visibleSettings.map((setting) =>
+      isSensitiveSettingKey(setting.key)
+        ? {
+            ...setting,
+            value: null,
+            configured: Boolean(setting.value),
+          }
+        : setting,
+    );
+
+    return noStoreJson({ settings: safeSettings });
   } catch (error) {
     const message =
       error instanceof Error
@@ -163,7 +177,7 @@ export async function PATCH(request: NextRequest) {
         updated.push({ key, value });
         
         // Track changes (only for non-sensitive settings)
-        if (!key.includes("secret") && !key.includes("api_key") && !key.includes("client_secret")) {
+        if (!isSensitiveSettingKey(key)) {
           changes[key] = { old: oldValue, new: value };
         }
       } catch (error) {
@@ -209,7 +223,7 @@ export async function PATCH(request: NextRequest) {
 
     return noStoreJson({
       success: true,
-      updated,
+      updated: updated.map(({ key }) => ({ key })),
       message: `อัปเดตการตั้งค่า ${updated.length} รายการเรียบร้อย`,
     });
   } catch (error) {
