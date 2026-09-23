@@ -180,7 +180,10 @@ export default function SupportCasesTable() {
 
   // Open Floating Card Console
   const handleOpenConsole = async (caseData: SupportCase) => {
-    const shouldClaim = caseData.status === "pending" || !caseData.handledByName || !caseData.handledById;
+    const isCentralCase = Boolean(caseData.centerCaseId || caseData.centerCaseCode);
+    const shouldClaim = !isCentralCase && (
+      caseData.status === "pending" || !caseData.handledByName || !caseData.handledById
+    );
 
     // Optimistic instant tag & in_progress status
     const initialCase: SupportCase = shouldClaim
@@ -314,7 +317,9 @@ export default function SupportCasesTable() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: selectedCase.id,
-            status: finalStatus,
+            ...(!selectedCase.centerCaseId && !selectedCase.centerCaseCode
+              ? { status: finalStatus }
+              : {}),
             adminNote: adminNote || null,
             adminResponse: adminResponse || null,
           }),
@@ -327,9 +332,11 @@ export default function SupportCasesTable() {
         }
 
         toast.success(
-          finalStatus === "resolved"
-            ? "บันทึกและปิดเคสเรียบร้อยแล้ว ✅"
-            : "อัปเดตเคสเรียบร้อยแล้ว"
+          selectedCase.centerCaseId || selectedCase.centerCaseCode
+            ? "บันทึกข้อมูลแล้ว โดยสถานะอ้างอิงจาก AppByMari Center"
+            : finalStatus === "resolved"
+              ? "บันทึกและปิดเคสเรียบร้อยแล้ว ✅"
+              : "อัปเดตเคสเรียบร้อยแล้ว"
         );
         setIsConsoleOpen(false);
         fetchCases();
@@ -632,6 +639,11 @@ export default function SupportCasesTable() {
                         <td className="px-3 py-2.5 text-sm">
                           <div className="flex flex-col gap-1 items-start">
                             <Badge
+                              title={caseData.centerStatusSyncState === "synced"
+                                ? "สถานะล่าสุดจาก AppByMari Center"
+                                : caseData.centerStatusSyncState === "unavailable"
+                                  ? "เชื่อมต่อ AppByMari Center ไม่ได้ จึงแสดงสถานะล่าสุดที่ Store มี"
+                                  : undefined}
                               className={
                                 caseData.status === "resolved"
                                   ? "bg-green-500 text-white hover:bg-green-600"
@@ -646,6 +658,21 @@ export default function SupportCasesTable() {
                                 ? "กำลังแก้"
                                 : "ยังไม่แก้"}
                             </Badge>
+                            {(caseData.centerCaseId || caseData.centerCaseCode) && (
+                              <span
+                                className={`text-[10px] ${caseData.centerStatusSyncState === "synced"
+                                  ? "text-emerald-700 dark:text-emerald-300"
+                                  : "text-amber-700 dark:text-amber-300"}`}
+                              >
+                                {caseData.centerStatusSyncState === "synced"
+                                  ? "AppByMari Center"
+                                  : caseData.centerStatusSyncState === "not_found"
+                                    ? "ไม่พบสถานะที่ Center"
+                                    : caseData.centerStatusSyncState === "unavailable"
+                                      ? "Center ยังไม่ตอบกลับ · สถานะอาจล้าสมัย"
+                                      : "สถานะจาก Center"}
+                              </span>
+                            )}
                             {caseData.handledByName && (
                               <span
                                 className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold border ${getAdminTagColor(
@@ -733,6 +760,11 @@ export default function SupportCasesTable() {
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <Badge
+                          title={caseData.centerStatusSyncState === "synced"
+                            ? "สถานะล่าสุดจาก AppByMari Center"
+                            : caseData.centerStatusSyncState === "unavailable"
+                              ? "เชื่อมต่อ AppByMari Center ไม่ได้ จึงแสดงสถานะล่าสุดที่ Store มี"
+                              : undefined}
                           className={
                             caseData.status === "resolved"
                               ? "bg-green-500 text-white text-[10px]"
@@ -747,6 +779,19 @@ export default function SupportCasesTable() {
                             ? "กำลังแก้"
                             : "ยังไม่แก้"}
                         </Badge>
+                        {(caseData.centerCaseId || caseData.centerCaseCode) && (
+                          <span className={`max-w-28 text-right text-[9px] leading-tight ${caseData.centerStatusSyncState === "synced"
+                            ? "text-emerald-700 dark:text-emerald-300"
+                            : "text-amber-700 dark:text-amber-300"}`}>
+                            {caseData.centerStatusSyncState === "synced"
+                              ? "AppByMari Center"
+                              : caseData.centerStatusSyncState === "not_found"
+                                ? "ไม่พบที่ Center"
+                                : caseData.centerStatusSyncState === "unavailable"
+                                  ? "สถานะ Center อาจล้าสมัย"
+                                  : "สถานะจาก Center"}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1138,6 +1183,7 @@ export default function SupportCasesTable() {
                       <Select
                         value={updateStatus}
                         onValueChange={(v) => setUpdateStatus(v as SupportCaseStatus)}
+                        disabled={Boolean(selectedCase.centerCaseId || selectedCase.centerCaseCode)}
                       >
                         <SelectTrigger className="w-[125px] h-7 text-xs bg-white dark:bg-[#202020]">
                           <SelectValue />
@@ -1150,6 +1196,19 @@ export default function SupportCasesTable() {
                       </Select>
                     </div>
                   </div>
+                  {(selectedCase.centerCaseId || selectedCase.centerCaseCode) && (
+                    <p className={`text-[11px] ${selectedCase.centerStatusSyncState === "synced"
+                      ? "text-emerald-700 dark:text-emerald-300"
+                      : "text-amber-700 dark:text-amber-300"}`}>
+                      {selectedCase.centerStatusSyncState === "synced"
+                        ? `สถานะนี้อ้างอิงจาก AppByMari Center${selectedCase.centerStatusUpdatedAt
+                          ? ` · อัปเดต ${formatDate(selectedCase.centerStatusUpdatedAt)}`
+                          : ""} กรุณาเปลี่ยนสถานะที่ศูนย์กลาง`
+                        : selectedCase.centerStatusSyncState === "not_found"
+                          ? "ไม่พบเคสที่เชื่อมโยงใน AppByMari Center จึงยังยืนยันสถานะล่าสุดไม่ได้"
+                          : "ติดต่อ AppByMari Center ไม่สำเร็จ สถานะที่แสดงอาจไม่ใช่ข้อมูลล่าสุด"}
+                    </p>
+                  )}
 
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--theme-color)]/20 bg-white/70 px-3 py-2 dark:bg-black/20">
                     <div className="flex min-w-0 items-center gap-2 text-xs">
@@ -1285,7 +1344,7 @@ export default function SupportCasesTable() {
                       type="button"
                       variant="outline"
                       onClick={() => handleSaveUpdate("in_progress")}
-                      disabled={isPending}
+                      disabled={isPending || Boolean(selectedCase.centerCaseId || selectedCase.centerCaseCode)}
                       className="h-9 text-xs flex-1 border-sky-400 text-sky-700 hover:bg-sky-50 dark:bg-transparent dark:text-sky-300 font-medium"
                     >
                       {isPending ? <Loader2 className="size-3 animate-spin" /> : "⏳ รับเคสกำลังทำ"}
@@ -1293,7 +1352,7 @@ export default function SupportCasesTable() {
                     <Button
                       type="button"
                       onClick={() => handleSaveUpdate("resolved")}
-                      disabled={isPending}
+                      disabled={isPending || Boolean(selectedCase.centerCaseId || selectedCase.centerCaseCode)}
                       className="h-9 text-xs flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md"
                     >
                       {isPending ? (

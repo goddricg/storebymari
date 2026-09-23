@@ -65,6 +65,8 @@ export type SupportCase = {
   centerSyncedAt?: string | null;
   centerSyncError?: string | null;
   centerSyncStatus?: SupportCaseCenterSyncStatus;
+  centerStatusSyncState?: "synced" | "unavailable" | "not_found";
+  centerStatusUpdatedAt?: string | null;
   handledById?: string | null;
   handledByName?: string | null;
   handledAt?: string | null;

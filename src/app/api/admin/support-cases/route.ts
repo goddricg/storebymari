@@ -10,6 +10,7 @@ import { createUserNotification } from "@/lib/notifications/repository";
 import { dispatchNotificationToUser } from "@/lib/push/dispatch";
 import { ensureSupportCenterSchema } from "@/lib/support/center-schema";
 import { forwardSupportCaseToCenter } from "@/lib/support/center-forwarding";
+import { syncSupportCaseStatusesFromCenter } from "@/lib/support/center-status";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -40,7 +41,8 @@ export async function GET(request: NextRequest) {
       if (!caseData) {
         return NextResponse.json({ ok: false, message: "ไม่พบเคส" }, { status: 404 });
       }
-      return NextResponse.json({ ok: true, case: caseData });
+      const [syncedCase] = await syncSupportCaseStatusesFromCenter([caseData]);
+      return NextResponse.json({ ok: true, case: syncedCase });
     }
 
     const status = searchParams.get("status");
@@ -72,10 +74,11 @@ export async function GET(request: NextRequest) {
           includeAttachments: false, // Don't load attachments for list view
         }
       );
+      const syncedCases = await syncSupportCaseStatusesFromCenter(result.cases);
 
       return NextResponse.json({
         ok: true,
-        cases: result.cases,
+        cases: syncedCases,
         total: result.total,
         page: result.page,
         totalPages: result.totalPages,
@@ -92,7 +95,8 @@ export async function GET(request: NextRequest) {
       siteId: getAdminSupportSiteScope(),
     });
 
-    return NextResponse.json({ ok: true, cases });
+    const syncedCases = await syncSupportCaseStatusesFromCenter(cases);
+    return NextResponse.json({ ok: true, cases: syncedCases });
   } catch (error) {
     const message = error instanceof Error ? error.message : "ไม่สามารถดึงข้อมูลเคสได้";
     return NextResponse.json({ ok: false, message }, { status: 500 });
@@ -159,6 +163,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === "claim") {
+      const caseToClaim = await findSupportCaseById(id, supportSiteScope);
+      if (!caseToClaim) {
+        return NextResponse.json({ ok: false, message: "ไม่พบเคสที่ต้องการรับผิดชอบ" }, { status: 404 });
+      }
+      if (caseToClaim.centerCaseId || caseToClaim.centerCaseCode) {
+        return NextResponse.json(
+          { ok: false, message: "เคสนี้จัดการสถานะที่ AppByMari Center" },
+          { status: 409 },
+        );
+      }
+
       const claimResult = await claimSupportCase(id, { id: me.id, name: adminName }, supportSiteScope);
       if (claimResult.success && claimResult.claimedByMe) {
         await recordAdminAuditEvent({
@@ -183,6 +198,15 @@ export async function PATCH(request: NextRequest) {
 
     const validated = updateSchema.parse(updates);
     const previousCase = await findSupportCaseById(id, supportSiteScope);
+    if (
+      (previousCase?.centerCaseId || previousCase?.centerCaseCode) &&
+      validated.status !== undefined
+    ) {
+      return NextResponse.json(
+        { ok: false, message: "เคสนี้อ้างอิงสถานะจาก AppByMari Center กรุณาเปลี่ยนสถานะที่ศูนย์กลาง" },
+        { status: 409 },
+      );
+    }
 
     // If resolving or case does not have handledByName, assign current admin
     const shouldAssignAdmin = !previousCase?.handledByName || validated.status === "resolved";

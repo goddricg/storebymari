@@ -6,7 +6,7 @@ import {
   type AppByMariRemoteProduct,
 } from "./types";
 import { ensureAppByMariSchema } from "./schema";
-import type { SupportCase, SupportCaseType } from "@/lib/support/types";
+import type { SupportCase, SupportCaseStatus, SupportCaseType } from "@/lib/support/types";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -53,9 +53,10 @@ async function requestJson(
   path: string,
   apiKey: string,
   init: RequestInit = {},
+  timeoutMs = 20_000,
 ): Promise<{ status: number; body: JsonRecord }> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(endpoint(path), {
@@ -201,6 +202,12 @@ export type AppByMariSupportCaseForwardResult = {
   remoteCaseCode: string | null;
 };
 
+export type AppByMariSupportCaseStatus = {
+  caseCode: string;
+  status: SupportCaseStatus;
+  updatedAt: string | null;
+};
+
 type AppByMariSupportCaseInput = Pick<
   SupportCase,
   | "caseCode"
@@ -269,6 +276,59 @@ export async function forwardAppByMariSupportCase(input: {
     remoteCaseId,
     remoteCaseCode,
   };
+}
+
+function isSupportCaseStatus(value: unknown): value is SupportCaseStatus {
+  return value === "pending" || value === "in_progress" || value === "resolved";
+}
+
+/** Fetch only status metadata for Store By Mari cases linked to the central queue. */
+export async function fetchAppByMariSupportCaseStatuses(input: {
+  provider?: ApiProvider | null;
+  apiKey?: string;
+  caseCodes: string[];
+}): Promise<AppByMariSupportCaseStatus[]> {
+  const caseCodes = [...new Set(input.caseCodes.map((code) => code.trim()).filter(Boolean))];
+  if (caseCodes.length === 0) return [];
+  if (caseCodes.length > 100) {
+    throw new AppByMariApiError(400, "Too many AppByMari support cases in one status request");
+  }
+
+  const provider = input.provider ?? await getAppByMariProvider();
+  const apiKey = resolveApiKey(provider, input.apiKey);
+  const result = await requestJson(
+    "support-cases/bulk-status",
+    apiKey,
+    {
+      method: "POST",
+      body: JSON.stringify({ caseCodes }),
+    },
+    5_000,
+  );
+
+  if (result.body.success !== true || !Array.isArray(result.body.cases)) {
+    throw new AppByMariApiError(result.status, "AppByMari returned an invalid support status response");
+  }
+
+  const requestedCaseCodes = new Set(caseCodes);
+  const statuses: AppByMariSupportCaseStatus[] = [];
+
+  for (const value of result.body.cases) {
+    const row = asRecord(value);
+    const caseCode = row ? asText(row.caseCode) : null;
+    if (!row || !caseCode || !requestedCaseCodes.has(caseCode)) continue;
+    if (!isSupportCaseStatus(row.status)) {
+      throw new AppByMariApiError(result.status, "AppByMari returned an invalid support case status");
+    }
+
+    statuses.push({
+      caseCode,
+      status: row.status,
+      updatedAt: asText(row.updatedAt),
+    });
+  }
+
+  return statuses;
 }
 
 export async function buyAppByMariProduct(input: {
