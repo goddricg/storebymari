@@ -10,6 +10,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 
+import { isStorefrontPrimaryLinkActive } from "@/lib/storefront-primary-nav";
 import { cn } from "@/lib/utils";
 
 export const STOREFRONT_PRIMARY_LINKS = [
@@ -26,11 +27,7 @@ export default function StorefrontPrimaryNav({ className }: { className?: string
   return (
     <nav className={cn("front-store-desktop-nav", className)} aria-label="เมนูหลัก">
       {STOREFRONT_PRIMARY_LINKS.map(({ href, label, Icon }) => {
-        const targetPath = href.split("#", 1)[0] || "/";
-        const isActive =
-          targetPath === "/"
-            ? pathname === "/"
-            : pathname === targetPath || pathname.startsWith(`${targetPath}/`);
+        const isActive = isStorefrontPrimaryLinkActive(pathname, href);
 
         return (
           <Link
@@ -47,3 +44,4 @@ export default function StorefrontPrimaryNav({ className }: { className?: string
     </nav>
   );
 }
+
