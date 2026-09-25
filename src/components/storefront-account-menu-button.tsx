@@ -10,7 +10,6 @@ import {
   Coins,
   FileText,
   History,
-  Home,
   LogOut,
   ShieldCheck,
   UserRound,
@@ -296,12 +295,14 @@ export default function StorefrontAccountMenuButton({
                   <span>เข้าโปรไฟล์</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="front-store-account-menu-item">
-                <Link href={accountHref}>
-                  {isAdmin ? <ShieldCheck aria-hidden="true" /> : <Home aria-hidden="true" />}
-                  <span>{isAdmin ? "ไปหน้า Admin" : "แดชบอร์ด"}</span>
-                </Link>
-              </DropdownMenuItem>
+              {isAdmin ? (
+                <DropdownMenuItem asChild className="front-store-account-menu-item">
+                  <Link href={accountHref}>
+                    <ShieldCheck aria-hidden="true" />
+                    <span>ไปหน้า Admin</span>
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem asChild className="front-store-account-menu-item">
                 <Link href="/dashboard/orders">
                   <History aria-hidden="true" />
@@ -382,3 +383,4 @@ export default function StorefrontAccountMenuButton({
     </>
   );
 }
+
